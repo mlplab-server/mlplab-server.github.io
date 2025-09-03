@@ -3,105 +3,38 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>연구실 서버 예약 캘린더</title>
-  
-  <!--
-  =============================================================
-  🔧 빠른 설정 가이드 (Supabase 사용)
-  =============================================================
-  1) 아래 두 값을 본인 프로젝트 값으로 교체하세요.
-     const SUPABASE_URL = 'https://YOUR-PROJECT.supabase.co'
-     const SUPABASE_ANON_KEY = 'YOUR-ANON-KEY'
-
-  2) Supabase → Authentication → URL 구성
-     - Redirect URLs에 GitHub Pages 도메인 추가
-       예) https://<username>.github.io 또는 https://<username>.github.io/<repo>
-
-  3) 아래 SQL을 Supabase SQL Editor에 실행해 테이블/정책을 만듭니다.
-     (필수 확장 포함, 겹치는 예약 금지 제약 포함)
-
-  --- SQL 시작 ---
-  create extension if not exists pgcrypto;
-  create extension if not exists btree_gist;
-
-  create table if not exists public.servers (
-    id uuid primary key default gen_random_uuid(),
-    name text unique not null,
-    display_order int generated always as identity,
-    active boolean not null default true
-  );
-
-  create table if not exists public.profiles (
-    id uuid primary key,                    -- auth.users.id
-    display_name text,
-    color text,
-    created_at timestamptz default now()
-  );
-  alter table public.profiles enable row level security;
-  create policy "profiles_read_all" on public.profiles for select using (true);
-  create policy "profiles_insert_self" on public.profiles for insert with check (auth.uid() = id);
-  create policy "profiles_update_self" on public.profiles for update using (auth.uid() = id);
-
-  create table if not exists public.reservations (
-    id uuid primary key default gen_random_uuid(),
-    server_id uuid not null references public.servers(id) on delete cascade,
-    user_id uuid not null references public.profiles(id) on delete cascade,
-    title text,
-    start_at timestamptz not null,
-    end_at timestamptz not null,
-    created_at timestamptz default now(),
-    updated_at timestamptz default now(),
-    constraint reservations_time_nonempty check (end_at > start_at)
-  );
-  create index if not exists reservations_server_time_idx on public.reservations(server_id, start_at, end_at);
-  alter table public.reservations enable row level security;
-
-  create or replace function public.set_updated_at()
-  returns trigger language plpgsql as $$
-  begin new.updated_at = now(); return new; end $$;
-  drop trigger if exists reservations_set_updated_at on public.reservations;
-  create trigger reservations_set_updated_at
-  before update on public.reservations
-  for each row execute procedure public.set_updated_at();
-
-  -- 서버별로 겹치는 시간 예약 금지
-  alter table public.reservations
-    add constraint reservations_no_overlap
-    exclude using gist (
-      server_id with =,
-      tstzrange(start_at, end_at, '[)') with &&
-    );
-
-  -- RLS 정책: 모두 열람 가능, 본인만 작성/수정/삭제 가능
-  create policy "reservations_read_all" on public.reservations for select using (true);
-  create policy "reservations_insert_own" on public.reservations for insert with check (auth.uid() = user_id);
-  create policy "reservations_update_own" on public.reservations for update using (auth.uid() = user_id);
-  create policy "reservations_delete_own" on public.reservations for delete using (auth.uid() = user_id);
-
-  -- servers 테이블은 전체 읽기 허용(관리/씨딩은 SQL로 직접)
-  alter table public.servers enable row level security;
-  create policy "servers_read_all" on public.servers for select using (true);
-
-  -- 샘플 서버
-  insert into public.servers(name) values ('S1'),('S2'),('S3')
-  on conflict(name) do nothing;
-  --- SQL 끝 ---
-
-  4) 로컬 테스트: 그냥 이 파일을 브라우저로 열어도 동작합니다.
-     (OAuth 리다이렉트는 실제 도메인에서 확인하세요.)
-
-  5) GitHub Pages 배포: 저장소 루트에 이 파일을 index.html로 커밋 → Pages 활성화.
-  =============================================================
-  -->
+  <title>MLP server</title>
 
   <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/main.min.css" rel="stylesheet" />
   <style>
+    .time-toolbar { display:flex; gap:6px; flex-wrap:wrap; }
+    .time-toolbar .tiny {
+    padding: 4px 8px; font-size:12px; border-radius:8px;
+    background: var(--panel); color: var(--text);
+    border: 1px solid rgba(255,255,255,0.14); cursor:pointer;
+    }
+    .time-toolbar .tiny:hover { border-color: var(--brand); }
+    .modal .field.two { 
+        grid-template-columns: 1fr 1fr; 
+    }
+    .modal .field.two > div { 
+        display: grid; 
+        gap: 6px; 
+    }
     :root {
       --bg: #0b1020;
       --panel: #121933;
       --text: #e6e9f5;
       --muted: #9aa3b2;
       --brand: #7c91ff;
+      --brand-weak: rgba(124,145,255,.18);
+      --accent: #222a54;
+      --ok: #22c55e;
+      --busy: #f97316;
+      --danger: #ef4444;
+        --dow-bg: rgba(124,145,255,.14);   /* 살짝 파란 틴트 */
+        --dow-text: #e6e9f5;               /* 밝은 글자 */
+        --dow-border: rgba(124,145,255,.28);
     }
     * { box-sizing: border-box; }
     html, body { height: 100%; }
@@ -121,166 +54,314 @@
     }
     .title { font-weight: 700; letter-spacing: .2px; }
     .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-    select, button {
-      appearance: none; border: 1px solid rgba(255,255,255,0.1);
+    button, .btn {
+      appearance: none; border: 1px solid rgba(255,255,255,0.14);
       background: var(--panel); color: var(--text);
-      padding: 8px 10px; border-radius: 10px; font-size: 14px;
+      padding: 8px 10px; border-radius: 10px; font-size: 14px; cursor: pointer;
     }
-    button.primary { background: var(--brand); border-color: var(--brand); color: #0b1020; font-weight: 700; }
-    button.ghost { background: transparent; border-color: rgba(255,255,255,0.14); }
-    #userBadge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 999px; background: rgba(255,255,255,0.08); font-size: 13px; }
-    #userSwatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
-    main { padding: 16px; }
-    #calendar { max-width: 1200px; margin: 0 auto; background: rgba(18,25,51,0.7); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 8px; }
+    .btn.primary { background: var(--brand); border-color: var(--brand); color: #0b1020; font-weight: 700; }
+    .btn.ghost { background: transparent; }
+    .segmented { display: inline-flex; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.14); }
+    .segmented button { background: transparent; border: 0; padding: 8px 12px; color: var(--text); }
+    .segmented button.active { background: var(--brand); color: #0b1020; font-weight: 700; }
+
+    main { display: grid; grid-template-columns: 300px 1fr; gap: 12px; padding: 16px; }
+
+    aside {
+      background: rgba(18,25,51,0.7); border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px; padding: 12px; height: fit-content;
+    }
+    .aside-title { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+    .server-list { display: flex; flex-direction: column; gap: 8px; }
+    .server-btn { display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; }
+    .server-btn.active { outline: 2px solid var(--brand); background: var(--accent); }
+    .server-row { display: grid; grid-template-columns: 1fr; gap: 4px; align-items: center; }
+    .server-meta { font-size: 12px; color: var(--muted); display: flex; gap: 6px; }
+
+    #calendarWrap { background: rgba(18,25,51,0.7); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 8px; }
+
+    /* 상태 패널 */
+    #statusPanel { margin-top: 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+    .status-card { background: rgba(18,25,51,0.9); border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; padding: 12px; display: grid; gap: 8px; }
+    .status-name { font-weight: 800; letter-spacing:.2px; }
+    .gpu-badge { display:inline-flex; gap:6px; align-items:center; font-size:12px; color: var(--muted); }
+    .bar { height: 8px; background: rgba(255,255,255,0.08); border-radius: 999px; overflow: hidden; }
+    .bar > span { display:block; height:100%; background: var(--brand); }
+    .status-subgrid { display:grid; gap:6px; }
+    .chip { display:inline-flex; padding: 2px 6px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.14); font-size: 12px; }
+    .muted { color: var(--muted); }
+    .status-free { color: var(--ok); }
+    .status-busy { color: var(--busy); }
 
     /* FullCalendar tweaks */
     .fc .fc-toolbar-title { font-size: 16px; font-weight: 700; color: var(--text); }
     .fc .fc-button { background: var(--panel); border: 1px solid rgba(255,255,255,0.12); color: var(--text); border-radius: 10px; padding: 6px 10px; }
     .fc .fc-button-primary { background: var(--brand); border-color: var(--brand); color: #0b1020; }
     .fc-theme-standard td, .fc-theme-standard th, .fc-theme-standard .fc-scrollgrid { border-color: rgba(255,255,255,0.08); }
-    .fc .fc-timegrid-slot { height: 40px; }
+    .fc .fc-timegrid-slot { height: 20px; }
 
+    /* 오늘 하이라이트와 today 버튼 색상 일치 */
+    .fc .fc-daygrid-day.fc-day-today, .fc .fc-timegrid-col.fc-day-today { background: var(--brand-weak); }
+    .fc .fc-highlight { background: rgba(124,145,255,.25); }
+
+    /* 요일 헤더 */
+    .fc .fc-col-header-cell { background: #ffffff; }
+    .fc .fc-col-header-cell-cushion { color: #000000 !important; font-weight: 600; }
+    .fc .fc-col-header .fc-day-sat,
+    .fc .fc-col-header .fc-day-sun{
+    background: rgba(239,68,68,.08); /* 붉은 틴트 */
+    }
     /* Event inner content */
-    .fc-resv { display: flex; flex-direction: column; gap: 2px; font-size: 12px; line-height: 1.2; padding: 2px; }
+    .fc-resv { display: flex; flex-direction: column; gap: 2px; font-size: 12px; line-height: 1.2; padding: 2px; color:#ffffff; }
     .fc-resv .line1 { font-weight: 700; filter: drop-shadow(0 1px 0 rgba(0,0,0,0.25)); }
-    .fc-resv .line2 { opacity: 0.9; }
+    .fc-resv .line2 { opacity: 0.95; }
 
     footer { color: var(--muted); font-size: 12px; text-align: center; padding: 16px; }
+
+    /* ===== Custom Modal ===== */
+    .modal-wrap { position: fixed; inset: 0; display: none; place-items: center; background: rgba(0,0,0,0.45); z-index: 60; }
+    .modal { width: min(520px, 92vw); background: #0e1430; border: 1px solid rgba(255,255,255,0.12); border-radius: 16px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+    .modal h3 { margin: 0 0 8px; font-size: 16px; }
+    .modal .desc { font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+    .modal .field { display: grid; gap: 6px; margin: 10px 0; }
+    .modal input, .modal select { background: var(--panel); border: 1px solid rgba(255,255,255,0.14); color: var(--text); border-radius: 10px; padding: 8px 10px; font-size: 14px; }
+    .modal .row { justify-content: flex-end; }
+    .modal .note { font-size: 12px; color: var(--muted); }
+    .modal .error { color: var(--danger); font-size: 12px; min-height: 16px; }
+
+    @media (max-width: 900px) { main { grid-template-columns: 1fr; } aside { order: 2; } }
   </style>
 </head>
 <body>
   <header>
+    <div class="row"><span class="title">🗓️ 연구실 서버 예약</span></div>
     <div class="row">
-      <span class="title">🗓️ 연구실 서버 예약</span>
-    </div>
-    <div class="row">
-      <label for="serverSelect" style="opacity:.8">새 예약 서버</label>
-      <select id="serverSelect" title="새 예약을 만들 서버를 선택하세요"></select>
-      <span id="userBadge">
-        <i id="userSwatch"></i>
-        <span id="userName">로그인 필요</span>
-      </span>
-      <button id="loginBtn" class="primary">Google 로그인</button>
-      <button id="logoutBtn" class="ghost" style="display:none">로그아웃</button>
+      <span style="opacity:.8">사용자:</span>
+      <div class="segmented" id="personaGroup">
+        <button data-id="송호윤">송호윤</button>
+        <button data-id="원인호">원인호</button>
+        <button data-id="김민준">김민준</button>
+        <button data-id="임현석">임현석</button>
+        <button data-id="최창수">최창수</button>
+        <button data-id="송승우">송승우</button>
+        <button data-id="유한결">유한결</button>
+        <button data-id="육정훈">육정훈</button>
+        <button data-id="조민경">조민경</button>
+        <button data-id="송서현">송서현</button>
+        <button data-id="김현규">김현규</button>
+      </div>
     </div>
   </header>
 
   <main>
-    <div id="calendar"></div>
+    <aside>
+      <div class="aside-title">서버 리스트</div>
+      <div id="serverList" class="server-list"></div>
+    </aside>
+
+    <div>
+      <div id="calendarWrap"><div id="calendar"></div></div>
+      <div id="statusPanel"></div>
+    </div>
   </main>
 
-  <footer>드래그로 선택해 예약을 만들고, 끌어서 이동/리사이즈할 수 있어요. (본인 예약만 수정/삭제 가능)</footer>
+  <!-- 예약 생성 모달 -->
+  <div id="createModal" class="modal-wrap" role="dialog" aria-modal="true">
+    <div class="modal">
+      <h3>새 예약</h3>
+      <div class="desc" id="cmServer"></div>
+      <div class="field">
+        <label for="cmTitle">제목 (선택)</label>
+        <input id="cmTitle" type="text" placeholder="Task" />
+      </div>
+    <div class="field two">
+    <div>
+        <label for="cmStart">시작</label>
+        <input id="cmStart" type="datetime-local" step="900" />
+    </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.3/dist/umd/supabase.min.js"></script>
+    <div>
+        <label for="cmEnd">종료</label>
+        <input id="cmEnd" type="datetime-local" step="900" />
+    </div>
+    </div>
+      <div class="field">
+        <label for="cmGpu">GPU 사용 개수</label>
+        <input id="cmGpu" type="number" min="1" step="1" value="1" />
+        <div class="note" id="cmAvail"></div>
+      </div>
+      <div class="error" id="cmError"></div>
+      <div class="row">
+        <button id="cmCancel" type="button" class="btn ghost">취소</button>
+        <button id="cmSave"   type="button" class="btn primary">저장</button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/locales/ko.global.min.js"></script>
   <script>
     (function () {
-      // 1) 여기를 본인 프로젝트로 교체
-      const SUPABASE_URL = 'https://YOUR-PROJECT.supabase.co';
-      const SUPABASE_ANON_KEY = 'YOUR-ANON-KEY';
+      // ======== 상수/상태 ========
+      const ADMINS = new Set(['김민준']);
+      const PERSONAS = [
+        { id: '김민준', name: '김민준', color: '#4338ca' },
+        { id: '원인호', name: '원인호', color: '#1d4ed8' },
+        { id: '송호윤', name: '송호윤', color: '#047857' },
+        { id: '임현석', name: '임현석', color: '#c2410c' },
+        { id: '유한결', name: '유한결', color: '#b45309' },
+        { id: '최창수', name: '최창수', color: '#4d7c0f' },
+        { id: '송승우', name: '송승우', color: '#15803d' },
+        { id: '육정훈', name: '육정훈', color: '#0f766e' },
+        { id: '조민경', name: '조민경', color: '#0e7490' },
+        { id: '김현규', name: '김현규', color: '#0369a1' },
+        { id: '송서현', name: '송서현', color: '#6d28d9' },
+      ];
 
-      const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      // 서버 정보
+      const SERVERS = [
+        { id: '과기대 H100', name: '과기대 H100', gpuType: 'H100 80GB', gpuCount: 8 },
+        { id: 'KAIST H200', name: 'KAIST H200', gpuType: 'H200 141GB', gpuCount: 2 },
+        { id: 'AICA H100', name: 'AICA H100', gpuType: 'H100 80GB', gpuCount: 16 },
+        { id: '테디썸 H200', name: '테디썸 H200', gpuType: 'H200 141GB', gpuCount: 8 },
+        { id: 'WBL H200', name: 'WBL H200', gpuType: 'H200 141GB', gpuCount: 4 },
+        { id: '테디썸 203', name: '테디썸 203', gpuType: 'A100 80GB', gpuCount: 4 },
+        { id: '테디썸 205', name: '테디썸 205', gpuType: 'A100 80GB', gpuCount: 4 },
+        { id: '과기대 A6000', name: '과기대 A6000', gpuType: 'A6000 40GB', gpuCount: 3 },
+      ];
 
-      const calendarEl = document.getElementById('calendar');
-      const serverSelect = document.getElementById('serverSelect');
-      const loginBtn = document.getElementById('loginBtn');
-      const logoutBtn = document.getElementById('logoutBtn');
-      const userBadge = document.getElementById('userBadge');
-      const userName = document.getElementById('userName');
-      const userSwatch = document.getElementById('userSwatch');
+      const LS_KEY_EVENTS   = 'lab-reservations-v2'; // gpuUsed 지원
+      const LS_KEY_PERSONA  = 'lab-current-persona';
+      const LS_KEY_SERVER   = 'lab-current-server';
 
-      let currentUser = null;   // auth.users row
-      let myProfile = null;     // profiles row
-      let serversById = new Map();
+      let currentPersona = null;
+      let currentServerId = null;
       let calendar = null;
 
-      // -------- util --------
-      function hashHue(str) {
-        let h = 0; for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 360; return h;
-      }
-      function colorFromId(id) { const h = hashHue(id || Math.random().toString()); return `hsl(${h},70%,70%)`; }
+      // ======== 유틸 ========
+      const sameId = (a,b)=> String(a||'').trim().toLowerCase() === String(b||'').trim().toLowerCase();
+      const isAdmin = ()=> !!(currentPersona && ADMINS.has(currentPersona.id));
+      const uuid = ()=> (crypto?.randomUUID?.() || (Math.random().toString(36).slice(2) + Date.now().toString(36)));
+      const toMs = (v)=> typeof v === 'number' ? v : new Date(v).getTime();  // 문자열/Date -> number(ms)
 
-      function setAuthUI() {
-        if (currentUser) {
-          userName.textContent = myProfile?.display_name || currentUser.email || '사용자';
-          const color = myProfile?.color || colorFromId(currentUser.id);
-          userSwatch.style.background = color;
-          loginBtn.style.display = 'none';
-          logoutBtn.style.display = '';
-        } else {
-          userName.textContent = '로그인 필요';
-          userSwatch.style.background = 'transparent';
-          loginBtn.style.display = '';
-          logoutBtn.style.display = 'none';
-        }
-      }
-
-      async function ensureProfile(user) {
-        const { data, error } = await sb.from('profiles').select('*').eq('id', user.id).maybeSingle();
-        if (error && error.code !== 'PGRST116') throw error; // ignore not found
-        if (!data) {
-          const display_name = user.user_metadata?.full_name || user.email || '사용자';
-          const color = colorFromId(user.id);
-          const { data: ins, error: e2 } = await sb.from('profiles').insert({ id: user.id, display_name, color }).select().single();
-          if (e2) throw e2;
-          myProfile = ins;
-        } else {
-          myProfile = data;
-          // color가 없으면 채워두기
-          if (!myProfile.color) {
-            const { data: up, error: e3 } = await sb.from('profiles').update({ color: colorFromId(user.id) }).eq('id', user.id).select().single();
-            if (!e3 && up) myProfile = up;
+      function loadEvents() {
+        try {
+          const v2 = JSON.parse(localStorage.getItem(LS_KEY_EVENTS) || '[]');
+          if (Array.isArray(v2) && v2.length) return v2;
+          // v1 → v2 마이그레이션
+          const v1 = JSON.parse(localStorage.getItem('lab-reservations-v1') || '[]');
+          if (Array.isArray(v1) && v1.length) {
+            localStorage.setItem(LS_KEY_EVENTS, JSON.stringify(v1));
+            return v1;
           }
+          return [];
+        } catch { return []; }
+      }
+      function saveEvents(events) { localStorage.setItem(LS_KEY_EVENTS, JSON.stringify(events)); }
+      function getServerById(id){ return SERVERS.find(s => sameId(s.id, id)) || null; }
+
+      function setPersona(id) {
+        currentPersona = PERSONAS.find(p => p.id === id) || PERSONAS[0];
+        localStorage.setItem(LS_KEY_PERSONA, currentPersona.id);
+        document.querySelectorAll('#personaGroup button').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.id === currentPersona.id);
+        });
+        calendar?.refetchEvents();
+        renderStatusPanel();
+      }
+      function setServer(id) {
+        currentServerId = id;
+        localStorage.setItem(LS_KEY_SERVER, id || '');
+        document.querySelectorAll('.server-btn').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.id === id);
+        });
+        calendar?.changeView('dayGridMonth');
+      }
+
+      const overlapMs = (aStartMs, aEndMs, bStartMs, bEndMs)=> (aStartMs < bEndMs) && (aEndMs > bStartMs);
+
+      function fmt(dt) {
+        const d = new Date(dt);
+        const mm = (d.getMonth()+1).toString().padStart(2,'0');
+        const dd = d.getDate().toString().padStart(2,'0');
+        const hh = d.getHours().toString().padStart(2,'0');
+        const mi = d.getMinutes().toString().padStart(2,'0');
+        return `${mm}/${dd} ${hh}:${mi}`;
+      }
+      const fmtRange = (s, e)=> `${fmt(s)}~${fmt(e)}`;
+        function toLocalInputValue(d){
+        const pad = n => String(n).padStart(2,'0');
+        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
         }
-      }
-
-      async function refreshServers() {
-        const { data, error } = await sb.from('servers').select('id, name, active').eq('active', true).order('display_order', { ascending: true });
-        if (error) { console.error(error); alert('서버 목록을 불러오지 못했어요.'); return; }
-        serversById = new Map((data || []).map(r => [r.id, r]));
-        serverSelect.innerHTML = '';
-        if (!data || data.length === 0) {
-          const opt = document.createElement('option');
-          opt.value = ''; opt.textContent = '⚠ 서버가 없습니다 (SQL로 S1~S3 추가 예시 참고)';
-          serverSelect.appendChild(opt);
-        } else {
-          const opt0 = document.createElement('option');
-          opt0.value = ''; opt0.textContent = '새 예약 서버 선택';
-          serverSelect.appendChild(opt0);
-          data.forEach(s => {
-            const opt = document.createElement('option'); opt.value = s.id; opt.textContent = s.name; serverSelect.appendChild(opt);
-          });
+        function fromLocalInputValue(v){
+        if(!v) return null;
+        const [date, time='00:00'] = v.split('T');
+        const [y,m,d] = date.split('-').map(Number);
+        const [hh,mm] = time.split(':').map(Number);
+        return new Date(y, (m||1)-1, d||1, hh||0, mm||0, 0, 0);
         }
+
+      // ======== UI 구성 ========
+      function buildPersonaButtons() {
+        const group = document.getElementById('personaGroup');
+        PERSONAS.forEach(p => {
+          const btn = group.querySelector(`button[data-id="${p.id}"]`);
+          if (btn) {
+            btn.style.borderRight = '1px solid rgba(0,0,0,0.0)';
+            btn.addEventListener('click', () => setPersona(p.id));
+          }
+        });
+        const saved = localStorage.getItem(LS_KEY_PERSONA);
+        setPersona(saved && PERSONAS.some(p=>p.id===saved) ? saved : '김민준');
       }
 
-      async function fetchEventsInRange(startISO, endISO) {
-        // [start, end)와 겹치는 예약만: start < endISO AND end > startISO
-        const orFilter = `and(start_at.lt.${endISO},end_at.gt.${startISO})`;
-        const { data, error } = await sb
-          .from('reservations')
-          .select('id, title, start_at, end_at, server_id, user_id, servers(name), profiles(display_name, color)')
-          .or(orFilter)
-          .order('start_at', { ascending: true });
-        if (error) throw error;
-        return data || [];
+      function buildServerList() {
+        const wrap = document.getElementById('serverList');
+        wrap.innerHTML = '';
+        SERVERS.forEach(s => {
+          const row = document.createElement('div');
+          row.className = 'server-row';
+
+          const selBtn = document.createElement('button');
+          selBtn.className = 'btn server-btn';
+          selBtn.dataset.id = s.id;
+          selBtn.innerHTML = `<span>${s.name}</span><span class="muted" style="font-size:12px;">선택</span>`;
+          selBtn.addEventListener('click', () => setServer(s.id));
+
+          const meta = document.createElement('div');
+          meta.className = 'server-meta';
+          meta.innerHTML = `<span class="chip">GPU: ${s.gpuType}</span><span class="chip">${s.gpuCount}개</span>`;
+
+          row.appendChild(selBtn);
+          row.appendChild(meta);
+          wrap.appendChild(row);
+        });
+
+        const saved = localStorage.getItem(LS_KEY_SERVER);
+        const current = (saved && SERVERS.some(s=>s.id===saved)) ? saved : (SERVERS[0]?.id || null);
+        setServer(current);
       }
 
-      function mapReservationToEvent(r) {
-        const ownerName = r.profiles?.display_name || '사용자';
-        const ownerColor = r.profiles?.color || '#8892d6';
-        const serverName = r.servers?.name || '???';
+      function mapToFcEvent(r) {
+        const owner = PERSONAS.find(p => p.id === r.ownerId) || { name: r.ownerId, color: '#1f2937' };
+        const server = getServerById(r.serverId);
+        const gpuTxt = r.gpuUsed ? ` · ${r.gpuUsed}GPU` : '';
         return {
           id: r.id,
           title: r.title || '',
-          start: r.start_at,
-          end: r.end_at,
-          backgroundColor: ownerColor,
-          borderColor: ownerColor,
+          start: r.start, // 문자열 ISO 그대로 사용 (표시용)
+          end: r.end,
+          backgroundColor: owner.color,
+          borderColor: owner.color,
+          textColor: '#ffffff',
           extendedProps: {
-            ownerId: r.user_id,
-            ownerName,
-            serverId: r.server_id,
-            serverName
+            ownerId: r.ownerId,
+            ownerName: owner.name,
+            serverId: r.serverId,
+            serverName: (server?.name || r.serverId) + gpuTxt,
+            gpuUsed: r.gpuUsed ?? 1,
+            startMs: r.startMs ?? toMs(r.start), // 안전하게 동기화
+            endMs:   r.endMs   ?? toMs(r.end),
           }
         };
       }
@@ -288,147 +369,252 @@
       function renderEventContent(arg) {
         const { ownerName, serverName } = arg.event.extendedProps || {};
         const title = arg.event.title ? ` — ${arg.event.title}` : '';
+        const range = `(${fmtRange(arg.event.start, arg.event.end)})`;
         const el = document.createElement('div');
         el.className = 'fc-resv';
-        el.innerHTML = `<div class="line1">[${serverName}]${title}</div><div class="line2">${ownerName || ''}</div>`;
+        el.style.color = '#ffffff';
+        el.innerHTML = `<div class="line1">[${serverName}]${title}</div><div class="line2">${ownerName || ''} ${range}</div>`;
         return { domNodes: [el] };
       }
 
-      async function createReservation({ server_id, start, end, title }) {
-        if (!currentUser) throw new Error('로그인이 필요합니다.');
-        const row = { server_id, user_id: currentUser.id, title: title || null, start_at: start, end_at: end };
-        const { data, error } = await sb.from('reservations').insert(row).select().single();
-        if (error) {
-          const msg = (error.message || '') + (error.details ? `\n${error.details}` : '');
-          if (/overlap|exclusion|&&/i.test(msg)) throw new Error('해당 서버의 그 시간대에 이미 다른 예약이 있어요.');
-          throw error;
+      function renderStatusPanel() {
+        const panel = document.getElementById('statusPanel');
+        const nowMs = Date.now();
+        const events = loadEvents();
+        panel.innerHTML = '';
+        SERVERS.forEach(s => {
+          const serverEventsNow = events.filter(e =>
+            sameId(e.serverId, s.id) &&
+            toMs(e.start) <= nowMs && nowMs < toMs(e.end)
+          );
+          const used = serverEventsNow.reduce((sum,e)=> sum + (Number(e.gpuUsed??1)||1), 0);
+          const free = Math.max(0, s.gpuCount - used);
+
+          const card = document.createElement('div');
+          card.className = 'status-card';
+          card.innerHTML = `
+            <div class="status-name">${s.name}</div>
+            <div class="gpu-badge">GPU: <span class="chip">${s.gpuType}</span> <span class="chip">총 ${s.gpuCount}개</span></div>
+            <div class="bar"><span style="width:${Math.min(100, Math.max(0, (used/s.gpuCount)*100))}%;"></span></div>
+            <div class="status-subgrid">
+              <div><strong>${free}</strong>/<strong>${s.gpuCount}</strong> GPUs available</div>
+              ${serverEventsNow.length===0 ? `<div class="status-free">현재 모두 사용 가능</div>` : serverEventsNow.map(e=>{
+                const owner = PERSONAS.find(p=>p.id===e.ownerId)?.name || e.ownerId;
+                return `<div class="chip">${owner} · ${e.gpuUsed??1}GPU · until ${fmt(e.end)}</div>`;
+              }).join('')}
+            </div>
+          `;
+          panel.appendChild(card);
+        });
+      }
+
+      // ======== 모달 ========
+        const createModal = {
+        el: null, saveBtn: null, cancelBtn: null,
+        titleEl: null, gpuEl: null, availEl: null, descEl: null, errEl: null,
+        startEl: null, endEl: null,
+        ctx: null,
+
+        open(ctx){
+            this.ctx = ctx; // {server, start:Date, end:Date}
+            if(!this.el){
+            this.el        = document.getElementById('createModal');
+            this.saveBtn   = document.getElementById('cmSave');
+            this.cancelBtn = document.getElementById('cmCancel');
+            this.titleEl   = document.getElementById('cmTitle');
+            this.gpuEl     = document.getElementById('cmGpu');
+            this.availEl   = document.getElementById('cmAvail');
+            this.descEl    = document.getElementById('cmServer');
+            this.errEl     = document.getElementById('cmError');
+            this.startEl   = document.getElementById('cmStart');
+            this.endEl     = document.getElementById('cmEnd');
+
+            this.cancelBtn.addEventListener('click', ()=> this.close());
+            this.el.addEventListener('click', (e)=>{ if(e.target===this.el) this.close(); });
+            this.saveBtn.addEventListener('click', ()=> this.save());
+
+            const onChange = ()=> this.recalc();
+            this.startEl.addEventListener('input', onChange);
+            this.endEl.addEventListener('input', onChange);
+            this.gpuEl.addEventListener('input', onChange);
+            }
+
+            // 기본값 채우기
+            this.startEl.value = toLocalInputValue(ctx.start);
+            this.endEl.value   = toLocalInputValue(ctx.end);
+            this.titleEl.value = '';
+            this.gpuEl.value   = '1';
+            this.errEl.textContent = '';
+            this.el.style.display = 'grid';
+
+            this.recalc(); // 가용 GPU 계산 & 버튼 상태 반영
+            setTimeout(()=> this.titleEl.focus(), 0);
+        },
+
+        recalc(){
+            if(!this.ctx) return;
+            const start = fromLocalInputValue(this.startEl.value);
+            const end   = fromLocalInputValue(this.endEl.value);
+
+            // 시간 검증
+            if(!(start && end) || !(start < end)){
+            this.errEl.textContent = '종료 시각은 시작 시각보다 늦어야 합니다.';
+            this.availEl.textContent = '';
+            this.saveBtn.disabled = true;
+            return;
+            }
+
+            const usedInRange = loadEvents().reduce((sum,e)=>{
+            if(!sameId(e.serverId, this.ctx.server.id)) return sum;
+            if(!overlapMs(start.getTime(), end.getTime(), toMs(e.start), toMs(e.end))) return sum;
+            return sum + (Number(e.gpuUsed??1)||1);
+            },0);
+
+            const cap = Number(this.ctx.server.gpuCount||0);
+            const available = Math.max(0, cap - usedInRange);
+
+            // GPU 입력 한계 조절
+            this.gpuEl.min = '1';
+            this.gpuEl.max = String(Math.max(available,1));
+            const cur = Math.max(1, Math.min(Number(this.gpuEl.value||'1'), Math.max(available,1)));
+            this.gpuEl.value = String(cur);
+
+            this.descEl.textContent = `서버: ${this.ctx.server.name} (${this.ctx.server.gpuType}, 총 ${cap}GPU) · 기간: ${fmtRange(start, end)}`;
+            this.availEl.textContent = `이 시간대 사용 가능: ${available} / ${cap} GPU`;
+            this.errEl.textContent = available>0 ? '' : '해당 시간대에 사용 가능한 GPU가 없습니다.';
+            this.saveBtn.disabled = available<=0;
+        },
+
+        close(){
+            this.el.style.display = 'none';
+            this.errEl.textContent = '';
+            this.titleEl.value = '';
+            this.gpuEl.value = '1';
+            this.ctx = null;
+        },
+
+        save(){
+            if(!this.ctx) return;
+            const title = this.titleEl.value.trim();
+            const gpuUsed = parseInt(this.gpuEl.value || '1', 10);
+            const start = fromLocalInputValue(this.startEl.value) || this.ctx.start;
+            const end   = fromLocalInputValue(this.endEl.value)   || this.ctx.end;
+            if(!isFinite(gpuUsed) || gpuUsed<1){ this.errEl.textContent='GPU 개수는 1 이상이어야 합니다.'; return; }
+            if(!(start < end)){ this.errEl.textContent='종료 시각은 시작 시각보다 늦어야 합니다.'; return; }
+
+            const cand = {
+            serverId: this.ctx.server.id,
+            start:   start.toISOString(),
+            end:     end.toISOString(),
+            startMs: start.getTime(),
+            endMs:   end.getTime(),
+            gpuUsed
+            };
+            if(!validateCapacity(cand)) { this.errEl.textContent = 'GPU 용량을 초과하여 예약할 수 없어요.'; return; }
+
+            const newRow = { id: uuid(), ownerId: currentPersona.id, title: title || '', ...cand };
+            const events = loadEvents();
+            events.push(newRow);
+            saveEvents(events);
+            calendar.refetchEvents();
+            renderStatusPanel();
+            this.close();
         }
-        return data;
+        };
+
+
+      // GPU 용량 기반 검증 (겹침 허용, 총합이 용량 이내여야 함) — 항상 ms 비교
+      function validateCapacity(candidate, exceptId){
+        const server = getServerById(candidate.serverId); if(!server) return false;
+        const cap = Number(server.gpuCount||0);
+        const cStart = candidate.startMs ?? toMs(candidate.start);
+        const cEnd   = candidate.endMs   ?? toMs(candidate.end);
+        const used = loadEvents().reduce((sum,e)=>{
+          if(e.id===exceptId) return sum;
+          if(!sameId(e.serverId, candidate.serverId)) return sum;
+          if(!overlapMs(cStart, cEnd, toMs(e.start), toMs(e.end))) return sum;
+          const u = Number(e.gpuUsed ?? 1);
+          return sum + (isFinite(u) && u>0 ? u : 1);
+        }, 0);
+        const need = Number(candidate.gpuUsed ?? 1);
+        return (used + need) <= cap;
       }
 
-      async function updateReservation(id, patch) {
-        const { error } = await sb.from('reservations').update(patch).eq('id', id);
-        if (error) {
-          const msg = (error.message || '') + (error.details ? `\n${error.details}` : '');
-          if (/overlap|exclusion|&&/i.test(msg)) throw new Error('겹치는 예약으로 인해 수정할 수 없어요.');
-          throw error;
-        }
-      }
-
-      async function deleteReservation(id) {
-        const { error } = await sb.from('reservations').delete().eq('id', id);
-        if (error) throw error;
-      }
-
+      // ======== 캘린더 ========
       async function initCalendar() {
+        const calendarEl = document.getElementById('calendar');
         calendar = new FullCalendar.Calendar(calendarEl, {
           locale: 'ko',
           timeZone: 'Asia/Seoul',
-          initialView: 'timeGridWeek',
+          initialView: 'dayGridMonth',
           height: 'auto',
           selectable: true,
           selectMirror: true,
           editable: true,
           dayMaxEvents: true,
           nowIndicator: true,
-          headerToolbar: {
-            left: 'prev,next today',
-            center: 'title',
-            right: 'dayGridMonth,timeGridWeek,timeGridDay'
-          },
-          slotMinTime: '07:00:00',
+          headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
+          slotMinTime: '00:00:00',
           slotMaxTime: '24:00:00',
           eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
           eventContent: renderEventContent,
-          events: async (info, success, failure) => {
-            try {
-              const rows = await fetchEventsInRange(info.startStr, info.endStr);
-              success(rows.map(mapReservationToEvent));
-            } catch (e) {
-              console.error(e); failure(e);
-            }
+          events: (info, success) => { success(loadEvents().map(mapToFcEvent)); },
+          select: (info) => {
+            if (!currentServerId) { alert('좌측에서 서버를 먼저 선택하세요.'); calendar.unselect(); return; }
+            if (!currentPersona) { alert('상단에서 사용자를 선택하세요.'); calendar.unselect(); return; }
+            const server = getServerById(currentServerId);
+            if(!server){ alert('서버 정보를 찾을 수 없습니다.'); calendar.unselect(); return; }
+            createModal.open({ server, start: info.start, end: info.end });
+            calendar.unselect();
           },
-          select: async (info) => {
-            if (!currentUser) { alert('로그인이 필요합니다.'); calendar.unselect(); return; }
-            const serverId = serverSelect.value;
-            if (!serverId) { alert('상단에서 서버를 선택하세요.'); calendar.unselect(); return; }
-            const serverName = serversById.get(serverId)?.name || '';
-            const title = prompt(`예약 제목 (선택)\n서버: ${serverName}`, '');
-            try {
-              await createReservation({ server_id: serverId, start: info.startStr, end: info.endStr, title });
-            } catch (e) {
-              alert(e.message || '예약에 실패했습니다.');
-            } finally {
-              calendar.unselect();
-            }
-          },
-          eventDrop: async (info) => {
+          eventDrop: (info) => {
             const ownerId = info.event.extendedProps?.ownerId;
-            if (!currentUser || ownerId !== currentUser.id) { alert('본인 예약만 이동할 수 있어요.'); info.revert(); return; }
-            try {
-              await updateReservation(info.event.id, { start_at: info.event.start.toISOString(), end_at: info.event.end.toISOString() });
-            } catch (e) {
-              alert(e.message || '수정 실패'); info.revert();
-            }
+            if (!currentPersona || (!isAdmin() && ownerId !== currentPersona.id)) { alert('본인 예약만 이동할 수 있어요.'); info.revert(); return; }
+            const updated = {
+              start: info.event.start.toISOString(),
+              end:   info.event.end.toISOString(),
+              startMs: info.event.start.getTime(),
+              endMs:   info.event.end.getTime(),
+              gpuUsed: info.event.extendedProps?.gpuUsed ?? 1
+            };
+            if (!validateCapacity({ serverId: info.event.extendedProps.serverId, ...updated }, info.event.id)) { alert('GPU 용량을 초과하여 이동할 수 없어요.'); info.revert(); return; }
+            const events = loadEvents().map(e => e.id === info.event.id ? { ...e, ...updated } : e);
+            saveEvents(events); renderStatusPanel();
           },
-          eventResize: async (info) => {
+          eventResize: (info) => {
             const ownerId = info.event.extendedProps?.ownerId;
-            if (!currentUser || ownerId !== currentUser.id) { alert('본인 예약만 수정할 수 있어요.'); info.revert(); return; }
-            try {
-              await updateReservation(info.event.id, { start_at: info.event.start.toISOString(), end_at: info.event.end.toISOString() });
-            } catch (e) {
-              alert(e.message || '수정 실패'); info.revert();
-            }
+            if (!currentPersona || (!isAdmin() && ownerId !== currentPersona.id)) { alert('본인 예약만 수정할 수 있어요.'); info.revert(); return; }
+            const updated = {
+              start: info.event.start.toISOString(),
+              end:   info.event.end.toISOString(),
+              startMs: info.event.start.getTime(),
+              endMs:   info.event.end.getTime(),
+              gpuUsed: info.event.extendedProps?.gpuUsed ?? 1
+            };
+            if (!validateCapacity({ serverId: info.event.extendedProps.serverId, ...updated }, info.event.id)) { alert('GPU 용량을 초과하여 수정할 수 없어요.'); info.revert(); return; }
+            const events = loadEvents().map(e => e.id === info.event.id ? { ...e, ...updated } : e);
+            saveEvents(events); renderStatusPanel();
           },
-          eventClick: async (info) => {
+          eventClick: (info) => {
             const ownerId = info.event.extendedProps?.ownerId;
             const serverName = info.event.extendedProps?.serverName;
-            const mine = currentUser && ownerId === currentUser.id;
-            if (!mine) { alert('내 예약만 삭제할 수 있어요.'); return; }
+            const canDelete = currentPersona && (isAdmin() || ownerId === currentPersona.id);
+            if (!canDelete) { alert('내 예약만 삭제할 수 있어요.'); return; }
             if (confirm(`[${serverName}] 예약을 삭제할까요?`)) {
-              try { await deleteReservation(info.event.id); } catch (e) { alert(e.message || '삭제 실패'); }
+              const events = loadEvents().filter(e => e.id !== info.event.id);
+              saveEvents(events); calendar.refetchEvents(); renderStatusPanel();
             }
           }
         });
         calendar.render();
       }
 
-      async function initRealtime() {
-        sb
-          .channel('realtime:reservations')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, () => {
-            calendar?.refetchEvents();
-          })
-          .subscribe();
-      }
-
-      async function initApp() {
-        // 현재 세션 확인
-        const { data: { session } } = await sb.auth.getSession();
-        currentUser = session?.user || null;
-        if (currentUser) await ensureProfile(currentUser);
-        setAuthUI();
-        await refreshServers();
-        await initCalendar();
-        await initRealtime();
-      }
-
-      sb.auth.onAuthStateChange(async (_evt, session) => {
-        currentUser = session?.user || null;
-        if (currentUser) await ensureProfile(currentUser);
-        setAuthUI();
-        calendar?.refetchEvents();
-      });
-
-      loginBtn.addEventListener('click', async () => {
-        await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } });
-      });
-      logoutBtn.addEventListener('click', async () => {
-        await sb.auth.signOut();
-      });
-
-      // go
-      initApp();
+      // ======== 시작 ========
+      buildPersonaButtons();
+      buildServerList();
+      initCalendar();
+      renderStatusPanel();
+      setInterval(renderStatusPanel, 15000); // 15초마다 상태 갱신
     })();
   </script>
 </body>
