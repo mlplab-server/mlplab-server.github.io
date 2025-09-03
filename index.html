@@ -247,7 +247,7 @@
       const ymdUTC = (d)=> Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
 
       function startOfDay(d){ const x = new Date(d); x.setHours(0,0,0,0); return x; }
-      function endOfDay(d){ const x = new Date(d); x.setHours(23,59,0,0); return x; }
+      function endOfDay(d){ const x = new Date(d); x.setHours(23,59,59,999); return x; }
 
       // 로컬 타임존(+09:00 등) 오프셋이 포함된 ISO 문자열로 변환
       function toOffsetISOStringLocal(date){
@@ -603,6 +603,23 @@
           eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
           eventContent: renderEventContent,
           events: (info, success) => { success(loadEvents().map(mapToFcEvent)); },
+          dateClick: (info) => {
+            if (!currentServerId) { alert('좌측에서 서버를 먼저 선택하세요.'); return; }
+            if (!currentPersona) { alert('상단에서 사용자를 선택하세요.'); return; }
+            const server = getServerById(currentServerId);
+            if(!server){ alert('서버 정보를 찾을 수 없습니다.'); return; }
+
+            if (info.view?.type?.startsWith('dayGrid')) {
+              const selStart = startOfDay(info.date);
+              const selEnd   = endOfDay(info.date);
+              createModal.open({ server, start: selStart, end: selEnd });
+            } else {
+              // timeGrid/week/day에서 클릭 시 1시간 기본 블록
+              const selStart = info.date;
+              const selEnd   = new Date(info.date.getTime() + 60*60*1000);
+              createModal.open({ server, start: selStart, end: selEnd });
+            }
+          },
           select: (info) => {
             if (!currentServerId) { alert('좌측에서 서버를 먼저 선택하세요.'); calendar.unselect(); return; }
             if (!currentPersona) { alert('상단에서 사용자를 선택하세요.'); calendar.unselect(); return; }
