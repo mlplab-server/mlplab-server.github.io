@@ -239,15 +239,38 @@
       let calendar = null;
 
       // ======== 유틸 ========
+      const MS_PER_DAY = 86400000;
       const sameId = (a,b)=> String(a||'').trim().toLowerCase() === String(b||'').trim().toLowerCase();
       const isAdmin = ()=> !!(currentPersona && ADMINS.has(currentPersona.id));
       const uuid = ()=> (crypto?.randomUUID?.() || (Math.random().toString(36).slice(2) + Date.now().toString(36)));
       const toMs = (v)=> typeof v === 'number' ? v : new Date(v).getTime();  // 문자열/Date -> number(ms)
+      const ymdUTC = (d)=> Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+
+      function startOfDay(d){ const x = new Date(d); x.setHours(0,0,0,0); return x; }
+      function endOfDay(d){ const x = new Date(d); x.setHours(23,59,0,0); return x; }
+
+      // 로컬 타임존(+09:00 등) 오프셋이 포함된 ISO 문자열로 변환
+      function toOffsetISOStringLocal(date){
+        const d = new Date(date);
+        const pad = (n)=> String(n).padStart(2,'0');
+        const yyyy = d.getFullYear();
+        const MM = pad(d.getMonth()+1);
+        const DD = pad(d.getDate());
+        const hh = pad(d.getHours());
+        const mm = pad(d.getMinutes());
+        const ss = pad(d.getSeconds());
+        const tzMin = -d.getTimezoneOffset(); // 동쪽(한국)은 +540
+        const sign = tzMin >= 0 ? '+' : '-';
+        const absm = Math.abs(tzMin);
+        const tzh = pad(Math.floor(absm/60));
+        const tzm = pad(absm%60);
+        return `${yyyy}-${MM}-${DD}T${hh}:${mm}:${ss}${sign}${tzh}:${tzm}`;
+      }
 
       function loadEvents() {
         try {
           const v2 = JSON.parse(localStorage.getItem(LS_KEY_EVENTS) || '[]');
-          if (Array.isArray(v2) && v2.length) return v2;
+          if (Array.isArray(v2) && v2.length) return ensureMsFields(v2);
           // v1 → v2 마이그레이션
           const v1 = JSON.parse(localStorage.getItem('lab-reservations-v1') || '[]');
           if (Array.isArray(v1) && v1.length) {
@@ -259,7 +282,24 @@
       }
       function saveEvents(events) { localStorage.setItem(LS_KEY_EVENTS, JSON.stringify(events)); }
       function getServerById(id){ return SERVERS.find(s => sameId(s.id, id)) || null; }
-
+      function ensureMsFields(evts){
+        let patched = false;
+        for (const e of evts) {
+            if (typeof e.startMs !== 'number') { e.startMs = toMs(e.start); patched = true; }
+            if (typeof e.endMs   !== 'number') { e.endMs   = toMs(e.end);   patched = true; }
+            // 문자열 저장 포맷도 로컬 오프셋 포함 ISO로 보정
+            if (typeof e.start === 'string') {
+              const n = new Date(e.startMs);
+              e.start = toOffsetISOStringLocal(n);
+            }
+            if (typeof e.end === 'string') {
+              const n2 = new Date(e.endMs);
+              e.end = toOffsetISOStringLocal(n2);
+            }
+        }
+        if (patched) saveEvents(evts);
+        return evts;
+        }
       function setPersona(id) {
         currentPersona = PERSONAS.find(p => p.id === id) || PERSONAS[0];
         localStorage.setItem(LS_KEY_PERSONA, currentPersona.id);
@@ -346,11 +386,15 @@
         const owner = PERSONAS.find(p => p.id === r.ownerId) || { name: r.ownerId, color: '#1f2937' };
         const server = getServerById(r.serverId);
         const gpuTxt = r.gpuUsed ? ` · ${r.gpuUsed}GPU` : '';
+        const startMs = (typeof r.startMs === 'number') ? r.startMs : toMs(r.start);
+        const endMs   = (typeof r.endMs   === 'number') ? r.endMs   : toMs(r.end);
+        const startISO = toOffsetISOStringLocal(new Date(startMs));
+        const endISO   = toOffsetISOStringLocal(new Date(endMs));
         return {
           id: r.id,
           title: r.title || '',
-          start: r.start, // 문자열 ISO 그대로 사용 (표시용)
-          end: r.end,
+          start: startISO,
+          end: endISO,
           backgroundColor: owner.color,
           borderColor: owner.color,
           textColor: '#ffffff',
@@ -360,8 +404,8 @@
             serverId: r.serverId,
             serverName: (server?.name || r.serverId) + gpuTxt,
             gpuUsed: r.gpuUsed ?? 1,
-            startMs: r.startMs ?? toMs(r.start), // 안전하게 동기화
-            endMs:   r.endMs   ?? toMs(r.end),
+            startMs,
+            endMs,
           }
         };
       }
@@ -504,8 +548,8 @@
 
             const cand = {
             serverId: this.ctx.server.id,
-            start:   start.toISOString(),
-            end:     end.toISOString(),
+            start:   toOffsetISOStringLocal(start), // 로컬 오프셋 포함 ISO로 저장
+            end:     toOffsetISOStringLocal(end),
             startMs: start.getTime(),
             endMs:   end.getTime(),
             gpuUsed
@@ -564,36 +608,98 @@
             if (!currentPersona) { alert('상단에서 사용자를 선택하세요.'); calendar.unselect(); return; }
             const server = getServerById(currentServerId);
             if(!server){ alert('서버 정보를 찾을 수 없습니다.'); calendar.unselect(); return; }
-            createModal.open({ server, start: info.start, end: info.end });
+
+            // dayGrid(Month)에서는 드래그 범위의 마지막 날을 포함하여
+            // 00:00 ~ 23:59 로 기본 세팅
+            let selStart, selEnd;
+            if (info.view?.type?.startsWith('dayGrid')) {
+              selStart = startOfDay(info.start);
+              const lastInclusive = new Date((info.end ? info.end.getTime() : info.start.getTime()) - 1);
+              selEnd = endOfDay(lastInclusive);
+            } else {
+              // timeGrid에서는 사용자가 드래그한 시간 범위를 그대로 사용
+              selStart = info.start;
+              selEnd   = info.end;
+            }
+
+            createModal.open({ server, start: selStart, end: selEnd });
             calendar.unselect();
           },
           eventDrop: (info) => {
             const ownerId = info.event.extendedProps?.ownerId;
             if (!currentPersona || (!isAdmin() && ownerId !== currentPersona.id)) { alert('본인 예약만 이동할 수 있어요.'); info.revert(); return; }
+
+            const oldStartMs = info.event.extendedProps?.startMs;
+            const oldEndMs   = info.event.extendedProps?.endMs;
+            let newStartMs, newEndMs;
+
+            if (info.view?.type?.startsWith('dayGrid')) {
+              // dayGrid: 날짜만 이동(시/분 고정)
+              const oldStart = new Date(oldStartMs);
+              const newStart = info.event.start;
+              const dayDelta = Math.round((ymdUTC(newStart) - ymdUTC(oldStart)) / MS_PER_DAY);
+              newStartMs = oldStartMs + dayDelta * MS_PER_DAY;
+              newEndMs   = oldEndMs   + dayDelta * MS_PER_DAY;
+            } else {
+              // timeGrid: 실제 드래그 시간 반영
+              newStartMs = info.event.start.getTime();
+              newEndMs   = info.event.end.getTime();
+            }
+
             const updated = {
-              start: info.event.start.toISOString(),
-              end:   info.event.end.toISOString(),
-              startMs: info.event.start.getTime(),
-              endMs:   info.event.end.getTime(),
+              start:  toOffsetISOStringLocal(new Date(newStartMs)),
+              end:    toOffsetISOStringLocal(new Date(newEndMs)),
+              startMs: newStartMs,
+              endMs:   newEndMs,
               gpuUsed: info.event.extendedProps?.gpuUsed ?? 1
             };
-            if (!validateCapacity({ serverId: info.event.extendedProps.serverId, ...updated }, info.event.id)) { alert('GPU 용량을 초과하여 이동할 수 없어요.'); info.revert(); return; }
+
+            if (!validateCapacity({ serverId: info.event.extendedProps.serverId, ...updated }, info.event.id)) {
+              alert('GPU 용량을 초과하여 이동할 수 없어요.');
+              info.revert();
+              return;
+            }
             const events = loadEvents().map(e => e.id === info.event.id ? { ...e, ...updated } : e);
-            saveEvents(events); renderStatusPanel();
+            saveEvents(events);
+            calendar.refetchEvents();
+            renderStatusPanel();
           },
           eventResize: (info) => {
             const ownerId = info.event.extendedProps?.ownerId;
             if (!currentPersona || (!isAdmin() && ownerId !== currentPersona.id)) { alert('본인 예약만 수정할 수 있어요.'); info.revert(); return; }
+
+            let newStartMs, newEndMs;
+            if (info.view?.type?.startsWith('dayGrid')) {
+              // dayGrid 리사이즈: 종료(또는 시작) 날짜만 변경, 시/분 고정
+              const oldEndMs = info.event.extendedProps?.endMs;
+              const oldEndInclusive = new Date(oldEndMs);
+              const newEndExclusive = info.event.end; // dayGrid는 exclusive
+              const newEndInclusive = new Date(newEndExclusive.getTime() - 1);
+              const dayDelta = Math.round((ymdUTC(newEndInclusive) - ymdUTC(oldEndInclusive)) / MS_PER_DAY);
+              newStartMs = info.event.extendedProps?.startMs; // 시작은 고정
+              newEndMs   = oldEndMs + dayDelta * MS_PER_DAY;
+            } else {
+              newStartMs = info.event.start.getTime();
+              newEndMs   = info.event.end.getTime();
+            }
+
             const updated = {
-              start: info.event.start.toISOString(),
-              end:   info.event.end.toISOString(),
-              startMs: info.event.start.getTime(),
-              endMs:   info.event.end.getTime(),
+              start: toOffsetISOStringLocal(new Date(newStartMs)),
+              end:   toOffsetISOStringLocal(new Date(newEndMs)),
+              startMs: newStartMs,
+              endMs:   newEndMs,
               gpuUsed: info.event.extendedProps?.gpuUsed ?? 1
             };
-            if (!validateCapacity({ serverId: info.event.extendedProps.serverId, ...updated }, info.event.id)) { alert('GPU 용량을 초과하여 수정할 수 없어요.'); info.revert(); return; }
+
+            if (!validateCapacity({ serverId: info.event.extendedProps.serverId, ...updated }, info.event.id)) {
+              alert('GPU 용량을 초과하여 수정할 수 없어요.');
+              info.revert();
+              return;
+            }
             const events = loadEvents().map(e => e.id === info.event.id ? { ...e, ...updated } : e);
-            saveEvents(events); renderStatusPanel();
+            saveEvents(events);
+            calendar.refetchEvents();
+            renderStatusPanel();
           },
           eventClick: (info) => {
             const ownerId = info.event.extendedProps?.ownerId;
