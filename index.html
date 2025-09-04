@@ -636,8 +636,13 @@
           let selStart, selEnd;
           if (info.view?.type?.startsWith('dayGrid')) {
             selStart = startOfDay(info.start);
-            const lastInclusive = new Date((info.end ? info.end.getTime() : info.start.getTime()) - 1);
-            selEnd = endOfDay(lastInclusive);
+            
+            // ✨ 여기가 수정된 부분입니다.
+            // info.end는 선택한 마지막 날의 다음 날 0시이므로, 하루를 빼서 마지막 날을 정확히 계산합니다.
+            const inclusiveEnd = new Date(info.end);
+            inclusiveEnd.setDate(inclusiveEnd.getDate() - 1);
+            selEnd = endOfDay(inclusiveEnd);
+
           } else {
             selStart = info.start;
             selEnd   = info.end;
@@ -679,7 +684,7 @@
             return;
           }
           
-          const { error } = await supabaseClient // ✨ 변경
+          const { error } = await supabaseClient
             .from('reservations')
             .update({ start_time: updated.start, end_time: updated.end })
             .eq('id', info.event.id);
@@ -713,7 +718,7 @@
             return;
           }
           
-          const { error } = await supabaseClient // ✨ 변경
+          const { error } = await supabaseClient
             .from('reservations')
             .update({ start_time: updated.start, end_time: updated.end })
             .eq('id', info.event.id);
@@ -733,7 +738,7 @@
           if (!canDelete) { alert('내 예약만 삭제할 수 있어요.'); return; }
           
           if (confirm(`[${serverName}] 예약을 삭제할까요?`)) {
-            const { error } = await supabaseClient // ✨ 변경
+            const { error } = await supabaseClient
               .from('reservations')
               .delete()
               .eq('id', info.event.id);
