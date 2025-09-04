@@ -9,18 +9,13 @@
   <style>
     .time-toolbar { display:flex; gap:6px; flex-wrap:wrap; }
     .time-toolbar .tiny {
-    padding: 4px 8px; font-size:12px; border-radius:8px;
-    background: var(--panel); color: var(--text);
-    border: 1px solid rgba(255,255,255,0.14); cursor:pointer;
+      padding: 4px 8px; font-size:12px; border-radius:8px;
+      background: var(--panel); color: var(--text);
+      border: 1px solid rgba(255,255,255,0.14); cursor:pointer;
     }
     .time-toolbar .tiny:hover { border-color: var(--brand); }
-    .modal .field.two { 
-        grid-template-columns: 1fr 1fr; 
-    }
-    .modal .field.two > div { 
-        display: grid; 
-        gap: 6px; 
-    }
+    .modal .field.two { grid-template-columns: 1fr 1fr; }
+    .modal .field.two > div { display: grid; gap: 6px; }
     :root {
       --bg: #0b1020;
       --panel: #121933;
@@ -32,9 +27,9 @@
       --ok: #22c55e;
       --busy: #f97316;
       --danger: #ef4444;
-        --dow-bg: rgba(124,145,255,.14);
-        --dow-text: #e6e9f5;
-        --dow-border: rgba(124,145,255,.28);
+      --dow-bg: rgba(124,145,255,.14);
+      --dow-text: #e6e9f5;
+      --dow-border: rgba(124,145,255,.28);
     }
     * { box-sizing: border-box; }
     html, body { height: 100%; }
@@ -104,9 +99,7 @@
     .fc .fc-col-header-cell { background: #ffffff; }
     .fc .fc-col-header-cell-cushion { color: #000000 !important; font-weight: 600; }
     .fc .fc-col-header .fc-day-sat,
-    .fc .fc-col-header .fc-day-sun{
-    background: rgba(239,68,68,.08);
-    }
+    .fc .fc-col-header .fc-day-sun{ background: rgba(239,68,68,.08); }
     .fc-resv { display: flex; flex-direction: column; gap: 2px; font-size: 12px; line-height: 1.2; padding: 2px; color:#ffffff; }
     .fc-resv .line1 { font-weight: 700; filter: drop-shadow(0 1px 0 rgba(0,0,0,0.25)); }
     .fc-resv .line2 { opacity: 0.95; }
@@ -168,16 +161,16 @@
         <label for="cmTitle">제목 (선택)</label>
         <input id="cmTitle" type="text" placeholder="Task" />
       </div>
-    <div class="field two">
-    <div>
-        <label for="cmStart">시작</label>
-        <input id="cmStart" type="datetime-local" step="900" />
-    </div>
-    <div>
-        <label for="cmEnd">종료</label>
-        <input id="cmEnd" type="datetime-local" step="900" />
-    </div>
-    </div>
+      <div class="field two">
+        <div>
+          <label for="cmStart">시작</label>
+          <input id="cmStart" type="datetime-local" step="60" />
+        </div>
+        <div>
+          <label for="cmEnd">종료</label>
+          <input id="cmEnd" type="datetime-local" step="60" />
+        </div>
+      </div>
       <div class="field">
         <label for="cmGpu">GPU 사용 개수</label>
         <input id="cmGpu" type="number" min="1" step="1" value="1" />
@@ -196,39 +189,38 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
   (function () {
-    // ✨ 변경: 변수명 충돌을 피하기 위해 supabaseClient로 변경
     const SUPABASE_URL = 'https://bqfnrrygflnkseoeilqt.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxZm5ycnlnZmxua3Nlb2VpbHF0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5MTUyNzIsImV4cCI6MjA3MjQ5MTI3Mn0.mOvH05HXZGLN4mNr6pwCSnxmq7OZseOU5lA7fZcs33k';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      
+
     const ADMINS = new Set(['김민준']);
     const PERSONAS = [
-        { id: '김민준', name: '김민준', color: '#4338ca' },
-        { id: '원인호', name: '원인호', color: '#1d4ed8' },
-        { id: '송호윤', name: '송호윤', color: '#047857' },
-        { id: '임현석', name: '임현석', color: '#c2410c' },
-        { id: '유한결', name: '유한결', color: '#b45309' },
-        { id: '최창수', name: '최창수', color: '#4d7c0f' },
-        { id: '송승우', name: '송승우', color: '#15803d' },
-        { id: '육정훈', name: '육정훈', color: '#0f766e' },
-        { id: '조민경', name: '조민경', color: '#0e7490' },
-        { id: '김현규', name: '김현규', color: '#0369a1' },
-        { id: '송서현', name: '송서현', color: '#6d28d9' },
+      { id: '김민준', name: '김민준', color: '#4338ca' },
+      { id: '원인호', name: '원인호', color: '#1d4ed8' },
+      { id: '송호윤', name: '송호윤', color: '#047857' },
+      { id: '임현석', name: '임현석', color: '#c2410c' },
+      { id: '유한결', name: '유한결', color: '#b45309' },
+      { id: '최창수', name: '최창수', color: '#4d7c0f' },
+      { id: '송승우', name: '송승우', color: '#15803d' },
+      { id: '육정훈', name: '육정훈', color: '#0f766e' },
+      { id: '조민경', name: '조민경', color: '#0e7490' },
+      { id: '김현규', name: '김현규', color: '#0369a1' },
+      { id: '송서현', name: '송서현', color: '#6d28d9' },
     ];
 
     const SERVERS = [
-        { id: '과기대 H100', name: '과기대 H100', gpuType: 'H100 80GB', gpuCount: 8 },
-        { id: 'KAIST H200', name: 'KAIST H200', gpuType: 'H200 141GB', gpuCount: 2 },
-        { id: 'AICA H100', name: 'AICA H100', gpuType: 'H100 80GB', gpuCount: 16 },
-        { id: '테디썸 H200', name: '테디썸 H200', gpuType: 'H200 141GB', gpuCount: 8 },
-        { id: 'WBL H200', name: 'WBL H200', gpuType: 'H200 141GB', gpuCount: 4 },
-        { id: '테디썸 203', name: '테디썸 203', gpuType: 'A100 80GB', gpuCount: 4 },
-        { id: '테디썸 205', name: '테디썸 205', gpuType: 'A100 80GB', gpuCount: 4 },
-        { id: '과기대 A6000', name: '과기대 A6000', gpuType: 'A6000 40GB', gpuCount: 3 },
+      { id: '과기대 H100', name: '과기대 H100', gpuType: 'H100 80GB', gpuCount: 8 },
+      { id: 'KAIST H200', name: 'KAIST H200', gpuType: 'H200 141GB', gpuCount: 2 },
+      { id: 'AICA H100', name: 'AICA H100', gpuType: 'H100 80GB', gpuCount: 16 },
+      { id: '테디썸 H200', name: '테디썸 H200', gpuType: 'H200 141GB', gpuCount: 8 },
+      { id: 'WBL H200', name: 'WBL H200', gpuType: 'H200 141GB', gpuCount: 4 },
+      { id: '테디썸 203', name: '테디썸 203', gpuType: 'A100 80GB', gpuCount: 8 },
+      { id: '테디썸 205', name: '테디썸 205', gpuType: 'A100 80GB', gpuCount: 8 },
+      { id: '과기대 A6000', name: '과기대 A6000', gpuType: 'A6000 40GB', gpuCount: 3 },
     ];
 
-    const LS_KEY_PERSONA  = 'lab-current-persona';
-    const LS_KEY_SERVER   = 'lab-current-server';
+    const LS_KEY_PERSONA = 'lab-current-persona';
+    const LS_KEY_SERVER  = 'lab-current-server';
 
     let currentPersona = null;
     let currentServerId = null;
@@ -240,54 +232,50 @@
     const toMs = (v)=> typeof v === 'number' ? v : new Date(v).getTime();
     const ymdUTC = (d)=> Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
 
+    // Helpers
     function startOfDay(d){ const x = new Date(d); x.setHours(0,0,0,0); return x; }
     function endOfDay(d){ const x = new Date(d); x.setHours(23,59,59,999); return x; }
-
-    function toOffsetISOStringLocal(date){
-      const d = new Date(date);
-      const pad = (n)=> String(n).padStart(2,'0');
-      const yyyy = d.getFullYear();
-      const MM = pad(d.getMonth()+1);
-      const DD = pad(d.getDate());
-      const hh = pad(d.getHours());
-      const mm = pad(d.getMinutes());
-      const ss = pad(d.getSeconds());
-      const tzMin = -d.getTimezoneOffset();
-      const sign = tzMin >= 0 ? '+' : '-';
-      const absm = Math.abs(tzMin);
-      const tzh = pad(Math.floor(absm/60));
-      const tzm = pad(absm%60);
-      return `${yyyy}-${MM}-${DD}T${hh}:${mm}:${ss}${sign}${tzh}:${tzm}`;
+    function addDays(d,n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
+    function endOfDayForInput(d){ const x = new Date(d); x.setHours(23,59,0,0); return x; } // 23:59 (분 단위)
+    function toDateSafe(x){
+      if (x instanceof Date) return x;
+      if (typeof x === 'string' && x.indexOf('T') === -1 && /^\d{4}-\d{2}-\d{2}\s/.test(x)) {
+        return new Date(x.replace(' ','T'));
+      }
+      return new Date(x);
     }
-    
+    function looksAllDaySpan(s,e){
+      return s.getHours()===0 && s.getMinutes()===0 && e.getHours()===0 && e.getMinutes()===0 && (((e - s) % MS_PER_DAY) === 0);
+    }
+
     async function loadEvents() {
-        const { data, error } = await supabaseClient // ✨ 변경
-            .from('reservations')
-            .select('*');
+      const { data, error } = await supabaseClient
+        .from('reservations')
+        .select('*');
 
-        if (error) {
-            console.error('데이터 로딩 실패:', error);
-            return [];
-        }
+      if (error) {
+        console.error('데이터 로딩 실패:', error);
+        return [];
+      }
 
-        const events = data.map(e => ({
-            ...e,
-            start: e.start_time,
-            end: e.end_time,
-            gpuUsed: e.gpu_used,
-            ownerId: e.owner_id,
-            serverId: e.server_id,
-        }));
+      const events = data.map(e => ({
+        ...e,
+        start: e.start_time,
+        end: e.end_time,
+        gpuUsed: e.gpu_used,
+        ownerId: e.owner_id,
+        serverId: e.server_id,
+      }));
 
-        return ensureMsFields(events);
+      return ensureMsFields(events);
     }
 
     function getServerById(id){ return SERVERS.find(s => sameId(s.id, id)) || null; }
-    
+
     function ensureMsFields(evts){
       for (const e of evts) {
-          if (typeof e.startMs !== 'number') { e.startMs = toMs(e.start); }
-          if (typeof e.endMs   !== 'number') { e.endMs   = toMs(e.end); }
+        if (typeof e.startMs !== 'number') { e.startMs = toMs(e.start); }
+        if (typeof e.endMs   !== 'number') { e.endMs   = toMs(e.end); }
       }
       return evts;
     }
@@ -321,17 +309,17 @@
       return `${mm}/${dd} ${hh}:${mi}`;
     }
     const fmtRange = (s, e)=> `${fmt(s)}~${fmt(e)}`;
-      function toLocalInputValue(d){
+    function toLocalInputValue(d){
       const pad = n => String(n).padStart(2,'0');
       return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-      }
-      function fromLocalInputValue(v){
+    }
+    function fromLocalInputValue(v){
       if(!v) return null;
       const [date, time='00:00'] = v.split('T');
       const [y,m,d] = date.split('-').map(Number);
       const [hh,mm] = time.split(':').map(Number);
       return new Date(y, (m||1)-1, d||1, hh||0, mm||0, 0, 0);
-      }
+    }
 
     function buildPersonaButtons() {
       const group = document.getElementById('personaGroup');
@@ -377,15 +365,15 @@
       const owner = PERSONAS.find(p => p.id === r.ownerId) || { name: r.ownerId, color: '#1f2937' };
       const server = getServerById(r.serverId);
       const gpuTxt = r.gpuUsed ? ` · ${r.gpuUsed}GPU` : '';
-      const startMs = (typeof r.startMs === 'number') ? r.startMs : toMs(r.start);
-      const endMs   = (typeof r.endMs   === 'number') ? r.endMs   : toMs(r.end);
-      const startISO = toOffsetISOStringLocal(new Date(startMs));
-      const endISO   = toOffsetISOStringLocal(new Date(endMs));
+
+      const s = toDateSafe(r.start);
+      const e = toDateSafe(r.end);
+
       return {
         id: r.id,
         title: r.title || '',
-        start: startISO,
-        end: endISO,
+        start: s,
+        end: e,
         backgroundColor: owner.color,
         borderColor: owner.color,
         textColor: '#ffffff',
@@ -395,8 +383,8 @@
           serverId: r.serverId,
           serverName: (server?.name || r.serverId) + gpuTxt,
           gpuUsed: r.gpuUsed ?? 1,
-          startMs,
-          endMs,
+          startMs: s.getTime(),
+          endMs: e.getTime()
         }
       };
     }
@@ -404,7 +392,14 @@
     function renderEventContent(arg) {
       const { ownerName, serverName } = arg.event.extendedProps || {};
       const title = arg.event.title ? ` — ${arg.event.title}` : '';
-      const range = `(${fmtRange(arg.event.start, arg.event.end)})`;
+
+      // 종일 스타일(00:00 ~ 다음날 00:00 배타)로 저장된 경우 라벨을 00:00~23:59로 보정
+      const isAllDayLike = looksAllDaySpan(arg.event.start, arg.event.end);
+      const endForLabel = isAllDayLike
+        ? new Date(arg.event.end.getTime() - 60*1000) // 1분 빼서 23:59
+        : arg.event.end;
+
+      const range = `(${fmtRange(arg.event.start, endForLabel)})`;
       const el = document.createElement('div');
       el.className = 'fc-resv';
       el.style.color = '#ffffff';
@@ -443,34 +438,34 @@
       });
     }
 
-      const createModal = {
+    const createModal = {
       el: null, saveBtn: null, cancelBtn: null,
       titleEl: null, gpuEl: null, availEl: null, descEl: null, errEl: null,
       startEl: null, endEl: null,
       ctx: null,
 
       async open(ctx){
-        this.ctx = ctx;
+        this.ctx = ctx; // ctx.wholeDay: 월간뷰에서 만든 예약인지 여부(내부용)
         if(!this.el){
-        this.el        = document.getElementById('createModal');
-        this.saveBtn   = document.getElementById('cmSave');
-        this.cancelBtn = document.getElementById('cmCancel');
-        this.titleEl   = document.getElementById('cmTitle');
-        this.gpuEl     = document.getElementById('cmGpu');
-        this.availEl   = document.getElementById('cmAvail');
-        this.descEl    = document.getElementById('cmServer');
-        this.errEl     = document.getElementById('cmError');
-        this.startEl   = document.getElementById('cmStart');
-        this.endEl     = document.getElementById('cmEnd');
+          this.el        = document.getElementById('createModal');
+          this.saveBtn   = document.getElementById('cmSave');
+          this.cancelBtn = document.getElementById('cmCancel');
+          this.titleEl   = document.getElementById('cmTitle');
+          this.gpuEl     = document.getElementById('cmGpu');
+          this.availEl   = document.getElementById('cmAvail');
+          this.descEl    = document.getElementById('cmServer');
+          this.errEl     = document.getElementById('cmError');
+          this.startEl   = document.getElementById('cmStart');
+          this.endEl     = document.getElementById('cmEnd');
 
-        this.cancelBtn.addEventListener('click', ()=> this.close());
-        this.el.addEventListener('click', (e)=>{ if(e.target===this.el) this.close(); });
-        this.saveBtn.addEventListener('click', ()=> this.save());
+          this.cancelBtn.addEventListener('click', ()=> this.close());
+          this.el.addEventListener('click', (e)=>{ if(e.target===this.el) this.close(); });
+          this.saveBtn.addEventListener('click', ()=> this.save());
 
-        const onChange = ()=> this.recalc();
-        this.startEl.addEventListener('input', onChange);
-        this.endEl.addEventListener('input', onChange);
-        this.gpuEl.addEventListener('input', onChange);
+          const onChange = ()=> this.recalc();
+          this.startEl.addEventListener('input', onChange);
+          this.endEl.addEventListener('input', onChange);
+          this.gpuEl.addEventListener('input', onChange);
         }
 
         this.startEl.value = toLocalInputValue(ctx.start);
@@ -495,11 +490,15 @@
           this.saveBtn.disabled = true;
           return;
         }
-        
+
+        // 저장될 실제 시간대 기준(월간뷰: 익일 00:00 배타)
+        const calcStart = this.ctx.wholeDay ? startOfDay(start) : start;
+        const calcEnd   = this.ctx.wholeDay ? startOfDay(addDays(end,1)) : end;
+
         const events = await loadEvents();
         const usedInRange = events.reduce((sum,e)=>{
           if(!sameId(e.serverId, this.ctx.server.id)) return sum;
-          if(!overlapMs(start.getTime(), end.getTime(), toMs(e.start), toMs(e.end))) return sum;
+          if(!overlapMs(calcStart.getTime(), calcEnd.getTime(), toMs(e.start), toMs(e.end))) return sum;
           return sum + (Number(e.gpuUsed??1)||1);
         },0);
 
@@ -511,6 +510,7 @@
         const cur = Math.max(1, Math.min(Number(this.gpuEl.value||'1'), Math.max(available,1)));
         this.gpuEl.value = String(cur);
 
+        // 라벨은 입력값 그대로(00:00~23:59)
         this.descEl.textContent = `서버: ${this.ctx.server.name} (${this.ctx.server.gpuType}, 총 ${cap}GPU) · 기간: ${fmtRange(start, end)}`;
         this.availEl.textContent = `이 시간대 사용 가능: ${available} / ${cap} GPU`;
         this.errEl.textContent = available>0 ? '' : '해당 시간대에 사용 가능한 GPU가 없습니다.';
@@ -524,41 +524,48 @@
         this.gpuEl.value = '1';
         this.ctx = null;
       },
-      
+
       async save(){
         if(!this.ctx) return;
         const title = this.titleEl.value.trim();
         const gpuUsed = parseInt(this.gpuEl.value || '1', 10);
-        const start = fromLocalInputValue(this.startEl.value) || this.ctx.start;
-        const end   = fromLocalInputValue(this.endEl.value)   || this.ctx.end;
+        const startIn = fromLocalInputValue(this.startEl.value) || this.ctx.start;
+        const endIn   = fromLocalInputValue(this.endEl.value)   || this.ctx.end;
         if(!isFinite(gpuUsed) || gpuUsed<1){ this.errEl.textContent='GPU 개수는 1 이상이어야 합니다.'; return; }
-        if(!(start < end)){ this.errEl.textContent='종료 시각은 시작 시각보다 늦어야 합니다.'; return; }
+        if(!(startIn < endIn)){ this.errEl.textContent='종료 시각은 시작 시각보다 늦어야 합니다.'; return; }
 
-        const cand = {
+        // 월간뷰에서 만든 경우: DB에는 배타 종료(마지막날 다음날 00:00)로 저장
+        let start = startIn;
+        let end   = endIn;
+        if (this.ctx.wholeDay) {
+          start = startOfDay(startIn);            // 00:00
+          end   = startOfDay(addDays(endIn,1));   // 다음날 00:00 (배타)
+        }
+
+        const candidate = {
           serverId: this.ctx.server.id,
-          start: toOffsetISOStringLocal(start),
-          end: toOffsetISOStringLocal(end),
           startMs: start.getTime(),
           endMs: end.getTime(),
           gpuUsed
         };
-        if(! (await validateCapacity(cand)) ) {
-          this.errEl.textContent = 'GPU 용량을 초과하여 예약할 수 없어요.'; return; 
+        if(! (await validateCapacity(candidate)) ) {
+          this.errEl.textContent = 'GPU 용량을 초과하여 예약할 수 없어요.'; return;
         }
 
         const newRowData = {
           owner_id: currentPersona.id,
           title: title || null,
-          server_id: cand.serverId,
-          start_time: cand.start,
-          end_time: cand.end,
-          gpu_used: cand.gpuUsed
+          server_id: candidate.serverId,
+          start_time: start.toISOString(),  // UTC 저장
+          end_time: end.toISOString(),      // UTC 저장(배타)
+          gpu_used: gpuUsed
         };
 
-        const { error } = await supabaseClient.from('reservations').insert(newRowData); // ✨ 변경
-
-        if (error) {
-          this.errEl.textContent = '예약 저장에 실패했습니다: ' + error.message;
+        try{
+          const { error } = await supabaseClient.from('reservations').insert(newRowData);
+          if (error) throw error;
+        }catch(err){
+          this.errEl.textContent = '예약 저장에 실패했습니다: ' + (err?.message || err);
           return;
         }
 
@@ -566,14 +573,14 @@
         renderStatusPanel();
         this.close();
       }
-      };
+    };
 
     async function validateCapacity(candidate, exceptId){
       const server = getServerById(candidate.serverId); if(!server) return false;
       const cap = Number(server.gpuCount||0);
       const cStart = candidate.startMs ?? toMs(candidate.start);
       const cEnd   = candidate.endMs   ?? toMs(candidate.end);
-      
+
       const events = await loadEvents();
       const used = events.reduce((sum,e)=>{
         if(e.id===exceptId) return sum;
@@ -590,7 +597,7 @@
       const calendarEl = document.getElementById('calendar');
       calendar = new FullCalendar.Calendar(calendarEl, {
         locale: 'ko',
-        timeZone: 'Asia/Seoul',
+        timeZone: 'local',
         initialView: 'dayGridMonth',
         height: 'auto',
         selectable: true,
@@ -601,13 +608,13 @@
         headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
         eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
         eventContent: renderEventContent,
-        
+
         events: async (fetchInfo, successCallback, failureCallback) => {
           try {
-              const data = await loadEvents();
-              successCallback(data.map(mapToFcEvent));
+            const data = await loadEvents();
+            successCallback(data.map(mapToFcEvent));
           } catch (error) {
-              failureCallback(error);
+            failureCallback(error);
           }
         },
 
@@ -617,40 +624,42 @@
           const server = getServerById(currentServerId);
           if(!server){ alert('서버 정보를 찾을 수 없습니다.'); return; }
 
+          const wholeDay = !!(info.view?.type?.startsWith('dayGrid'));
           let selStart, selEnd;
-          if (info.view?.type?.startsWith('dayGrid')) {
-            selStart = startOfDay(info.date);
-            selEnd   = endOfDay(info.date);
+
+          if (wholeDay) {
+            selStart = startOfDay(info.date);      // 당일 00:00
+            selEnd   = endOfDayForInput(info.date);// 당일 23:59 (입력 기본값)
           } else {
             selStart = info.date;
             selEnd   = new Date(info.date.getTime() + 60*60*1000);
           }
-          createModal.open({ server, start: selStart, end: selEnd });
+          createModal.open({ server, start: selStart, end: selEnd, wholeDay });
         },
+
         select: (info) => {
           if (!currentServerId) { alert('좌측에서 서버를 먼저 선택하세요.'); calendar.unselect(); return; }
           if (!currentPersona) { alert('상단에서 사용자를 선택하세요.'); calendar.unselect(); return; }
           const server = getServerById(currentServerId);
           if(!server){ alert('서버 정보를 찾을 수 없습니다.'); calendar.unselect(); return; }
 
+          const wholeDay = !!(info.view?.type?.startsWith('dayGrid'));
           let selStart, selEnd;
-          if (info.view?.type?.startsWith('dayGrid')) {
-            selStart = startOfDay(info.start);
-            
-            // ✨ 여기가 수정된 부분입니다.
-            // info.end는 선택한 마지막 날의 다음 날 0시이므로, 하루를 빼서 마지막 날을 정확히 계산합니다.
+
+          if (wholeDay) {
+            selStart = startOfDay(info.start);           // 시작일 00:00
             const inclusiveEnd = new Date(info.end);
             inclusiveEnd.setDate(inclusiveEnd.getDate() - 1);
-            selEnd = endOfDay(inclusiveEnd);
-
+            selEnd   = endOfDayForInput(inclusiveEnd);   // 마지막날 23:59
           } else {
             selStart = info.start;
             selEnd   = info.end;
           }
 
-          createModal.open({ server, start: selStart, end: selEnd });
+          createModal.open({ server, start: selStart, end: selEnd, wholeDay });
           calendar.unselect();
         },
+
         eventDrop: async (info) => {
           const ownerId = info.event.extendedProps?.ownerId;
           if (!currentPersona || (!isAdmin() && ownerId !== currentPersona.id)) { alert('본인 예약만 이동할 수 있어요.'); info.revert(); return; }
@@ -671,8 +680,8 @@
           }
 
           const updated = {
-            start: toOffsetISOStringLocal(new Date(newStartMs)),
-            end:   toOffsetISOStringLocal(new Date(newEndMs)),
+            start: new Date(newStartMs).toISOString(),
+            end:   new Date(newEndMs).toISOString(),
             startMs: newStartMs,
             endMs:   newEndMs,
             gpuUsed: info.event.extendedProps?.gpuUsed ?? 1
@@ -683,7 +692,7 @@
             info.revert();
             return;
           }
-          
+
           const { error } = await supabaseClient
             .from('reservations')
             .update({ start_time: updated.start, end_time: updated.end })
@@ -697,6 +706,7 @@
           calendar.refetchEvents();
           renderStatusPanel();
         },
+
         eventResize: async (info) => {
           const ownerId = info.event.extendedProps?.ownerId;
           if (!currentPersona || (!isAdmin() && ownerId !== currentPersona.id)) { alert('본인 예약만 수정할 수 있어요.'); info.revert(); return; }
@@ -705,8 +715,8 @@
           let newEndMs   = info.event.end.getTime();
 
           const updated = {
-            start: toOffsetISOStringLocal(new Date(newStartMs)),
-            end:   toOffsetISOStringLocal(new Date(newEndMs)),
+            start: new Date(newStartMs).toISOString(),
+            end:   new Date(newEndMs).toISOString(),
             startMs: newStartMs,
             endMs:   newEndMs,
             gpuUsed: info.event.extendedProps?.gpuUsed ?? 1
@@ -717,7 +727,7 @@
             info.revert();
             return;
           }
-          
+
           const { error } = await supabaseClient
             .from('reservations')
             .update({ start_time: updated.start, end_time: updated.end })
@@ -731,12 +741,13 @@
           calendar.refetchEvents();
           renderStatusPanel();
         },
+
         eventClick: async (info) => {
           const ownerId = info.event.extendedProps?.ownerId;
           const serverName = info.event.extendedProps?.serverName;
           const canDelete = currentPersona && (isAdmin() || ownerId === currentPersona.id);
           if (!canDelete) { alert('내 예약만 삭제할 수 있어요.'); return; }
-          
+
           if (confirm(`[${serverName}] 예약을 삭제할까요?`)) {
             const { error } = await supabaseClient
               .from('reservations')
