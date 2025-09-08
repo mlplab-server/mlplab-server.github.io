@@ -116,6 +116,12 @@
     .modal .note { font-size: 12px; color: var(--muted); }
     .modal .error { color: var(--danger); font-size: 12px; min-height: 16px; }
 
+    /* ▼▼ NEW: Context menu styles */
+    .context-menu { position: fixed; background: #0e1430; border: 1px solid rgba(255,255,255,0.2); border-radius: 12px; padding: 6px; display: none; z-index: 70; min-width: 150px; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+    .context-menu button { display:block; width:100%; background: transparent; border: 0; padding: 8px 10px; color: var(--text); text-align:left; border-radius: 8px; font-size: 14px; }
+    .context-menu button:hover { background: var(--accent); }
+    /* ▲▲ NEW */
+
     @media (max-width: 900px) { main { grid-template-columns: 1fr; } aside { order: 2; } }
   </style>
 </head>
@@ -185,6 +191,43 @@
       </div>
     </div>
   </div>
+
+  <!-- ▼▼ NEW: Edit modal -->
+  <div id="editModal" class="modal-wrap" role="dialog" aria-modal="true">
+    <div class="modal">
+      <h3>예약 수정</h3>
+      <div class="desc" id="emServer"></div>
+      <div class="field">
+        <label for="emTitle">제목 (선택)</label>
+        <input id="emTitle" type="text" placeholder="Task" />
+      </div>
+      <div class="field two">
+        <div>
+          <label for="emStart">시작</label>
+          <input id="emStart" type="datetime-local" step="60" />
+        </div>
+        <div>
+          <label for="emEnd">종료</label>
+          <input id="emEnd" type="datetime-local" step="60" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="emGpu">GPU 사용 개수</label>
+        <input id="emGpu" type="number" min="1" step="1" value="1" />
+        <div class="note" id="emAvail"></div>
+      </div>
+      <div class="error" id="emError"></div>
+      <div class="row">
+        <button id="emCancel" type="button" class="btn ghost">취소</button>
+        <button id="emSave"   type="button" class="btn primary">저장</button>
+      </div>
+    </div>
+  </div>
+  <!-- ▲▲ NEW -->
+
+  <!-- ▼▼ NEW: context menu container (populated by JS) -->
+  <div id="ctxMenu" class="context-menu" role="menu" aria-hidden="true" style="display:none"></div>
+  <!-- ▲▲ NEW -->
 
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/locales/ko.global.min.js"></script>
@@ -580,6 +623,132 @@
       }
     };
 
+    // ▼▼ NEW: Edit modal (우클릭 → 수정)
+    const editModal = {
+      el: null, saveBtn: null, cancelBtn: null,
+      titleEl: null, gpuEl: null, availEl: null, descEl: null, errEl: null,
+      startEl: null, endEl: null,
+      ctx: null, // { event, server }
+
+      async open(ctx){
+        this.ctx = ctx;
+        if(!this.el){
+          this.el        = document.getElementById('editModal');
+          this.saveBtn   = document.getElementById('emSave');
+          this.cancelBtn = document.getElementById('emCancel');
+          this.titleEl   = document.getElementById('emTitle');
+          this.gpuEl     = document.getElementById('emGpu');
+          this.availEl   = document.getElementById('emAvail');
+          this.descEl    = document.getElementById('emServer');
+          this.errEl     = document.getElementById('emError');
+          this.startEl   = document.getElementById('emStart');
+          this.endEl     = document.getElementById('emEnd');
+
+          this.cancelBtn.addEventListener('click', ()=> this.close());
+          this.el.addEventListener('click', (e)=>{ if(e.target===this.el) this.close(); });
+          this.saveBtn.addEventListener('click', ()=> this.save());
+
+          const onChange = ()=> this.recalc();
+          this.startEl.addEventListener('input', onChange);
+          this.endEl.addEventListener('input', onChange);
+          this.gpuEl.addEventListener('input', onChange);
+        }
+
+        const ev = ctx.event;
+        this.titleEl.value = ev.title || '';
+        this.startEl.value = toLocalInputValue(ev.start);
+        this.endEl.value   = toLocalInputValue(ev.end);
+        this.gpuEl.value   = String(ev.extendedProps?.gpuUsed ?? 1);
+        this.errEl.textContent = '';
+        this.el.style.display = 'grid';
+
+        await this.recalc();
+        setTimeout(()=> this.titleEl.focus(), 0);
+      },
+
+      async recalc(){
+        if(!this.ctx) return;
+        const start = fromLocalInputValue(this.startEl.value);
+        const end   = fromLocalInputValue(this.endEl.value);
+        const currentUsed = Number(this.gpuEl.value || '1');
+
+        if(!(start && end) || !(start < end)){
+          this.errEl.textContent = '종료 시각은 시작 시각보다 늦어야 합니다.';
+          this.availEl.textContent = '';
+          this.saveBtn.disabled = true;
+          return;
+        }
+
+        const events = await loadEvents();
+        const cap = Number(this.ctx.server.gpuCount||0);
+        const usedInRange = events.reduce((sum,e)=>{
+          if(e.id===this.ctx.event.id) return sum; // 본인 예약 제외
+          if(!sameId(e.serverId, this.ctx.server.id)) return sum;
+          if(!overlapMs(start.getTime(), end.getTime(), toMs(e.start), toMs(e.end))) return sum;
+          return sum + (Number(e.gpuUsed??1)||1);
+        },0);
+        const available = Math.max(0, cap - usedInRange);
+        const allowedMax = Math.max(1, Math.min(cap, available + (this.ctx.event.extendedProps?.gpuUsed ?? 1)));
+
+        this.gpuEl.min = '1';
+        this.gpuEl.max = String(allowedMax);
+        const clamped = Math.max(1, Math.min(currentUsed, allowedMax));
+        if (clamped !== currentUsed) this.gpuEl.value = String(clamped);
+
+        this.descEl.textContent = `서버: ${this.ctx.server.name} (${this.ctx.server.gpuType}, 총 ${cap}GPU) · 기간: ${fmtRange(start, end)}`;
+        this.availEl.textContent = `이 시간대 사용 가능: ${available} / ${cap} GPU (현재 예약 포함 최대 ${allowedMax}GPU)`;
+        this.errEl.textContent = allowedMax>0 ? '' : '해당 시간대에 사용 가능한 GPU가 없습니다.';
+        this.saveBtn.disabled = allowedMax<=0;
+      },
+
+      close(){
+        this.el.style.display = 'none';
+        this.errEl.textContent = '';
+        this.ctx = null;
+      },
+
+      async save(){
+        if(!this.ctx) return;
+        const title = this.titleEl.value.trim();
+        const gpuUsed = parseInt(this.gpuEl.value || '1', 10);
+        const start = fromLocalInputValue(this.startEl.value) || this.ctx.event.start;
+        const end   = fromLocalInputValue(this.endEl.value)   || this.ctx.event.end;
+        if(!isFinite(gpuUsed) || gpuUsed<1){ this.errEl.textContent='GPU 개수는 1 이상이어야 합니다.'; return; }
+        if(!(start < end)){ this.errEl.textContent='종료 시각은 시작 시각보다 늦어야 합니다.'; return; }
+
+        const candidate = {
+          serverId: this.ctx.server.id,
+          startMs: start.getTime(),
+          endMs: end.getTime(),
+          gpuUsed
+        };
+        if(! (await validateCapacity(candidate, this.ctx.event.id)) ) {
+          this.errEl.textContent = 'GPU 용량을 초과하여 수정할 수 없어요.'; return;
+        }
+
+        try{
+          const { error } = await supabaseClient
+            .from('reservations')
+            .update({
+              title: title || null,
+              start_time: start.toISOString(),
+              end_time: end.toISOString(),
+              gpu_used: gpuUsed
+            })
+            .eq('id', this.ctx.event.id);
+          if (error) throw error;
+        }catch(err){
+          this.errEl.textContent = '업데이트에 실패했습니다: ' + (err?.message || err);
+          return;
+        }
+
+        calendar.refetchEvents();
+        renderStatusPanel();
+        this.close();
+      }
+    };
+    // ▲▲ NEW
+
     async function validateCapacity(candidate, exceptId){
       const server = getServerById(candidate.serverId); if(!server) return false;
       const cap = Number(server.gpuCount||0);
@@ -597,6 +766,64 @@
       const need = Number(candidate.gpuUsed ?? 1);
       return (used + need) <= cap;
     }
+
+    // ▼▼ NEW: permissions + delete helper
+    function canModifyEvent(ev){
+      const ownerId = ev.extendedProps?.ownerId;
+      return currentPersona && (isAdmin() || ownerId === currentPersona.id);
+    }
+    async function deleteEvent(ev){
+      if (!canModifyEvent(ev)) { alert('내 예약만 삭제할 수 있어요.'); return; }
+      const serverName = ev.extendedProps?.serverName || ev.extendedProps?.serverId || '';
+      if (!confirm(`[${serverName}] 예약을 삭제할까요?`)) return;
+      const { error } = await supabaseClient
+        .from('reservations')
+        .delete()
+        .eq('id', ev.id);
+      if (error) { alert('삭제에 실패했습니다: ' + error.message); return; }
+      calendar.refetchEvents();
+      renderStatusPanel();
+    }
+    // ▲▲ NEW
+
+    // ▼▼ NEW: lightweight context menu controller
+    const ctxMenu = (function(){
+      const el = document.getElementById('ctxMenu');
+      let targetEvent = null;
+      function hide(){ el.style.display = 'none'; el.setAttribute('aria-hidden','true'); targetEvent=null; }
+      function show(x,y, ev){
+        targetEvent = ev;
+        el.innerHTML = `<button data-act="edit">수정</button><button data-act="delete">삭제</button>`;
+        el.style.display = 'block';
+        el.setAttribute('aria-hidden','false');
+        // position within viewport
+        const vw = window.innerWidth, vh = window.innerHeight;
+        const rectW = 180; const rectH = 100;
+        const left = Math.min(x, vw - rectW - 8);
+        const top  = Math.min(y, vh - rectH - 8);
+        el.style.left = left + 'px';
+        el.style.top  = top + 'px';
+      }
+      el.addEventListener('click', (e)=>{
+        const act = e.target?.dataset?.act;
+        if(!act) return;
+        const ev = targetEvent; hide();
+        if(!ev) return;
+        if (act==='edit') {
+          const server = getServerById(ev.extendedProps?.serverId);
+          if (!canModifyEvent(ev)) { alert('본인 예약만 수정할 수 있어요.'); return; }
+          editModal.open({ event: ev, server });
+        } else if (act==='delete') {
+          deleteEvent(ev);
+        }
+      });
+      document.addEventListener('click', (e)=>{ if(el.style.display==='block' && !el.contains(e.target)) hide(); });
+      document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') hide(); });
+      window.addEventListener('blur', hide);
+      window.addEventListener('scroll', ()=>{ if(el.style.display==='block') hide(); }, true);
+      return { show, hide };
+    })();
+    // ▲▲ NEW
 
     async function initCalendar() {
       const calendarEl = document.getElementById('calendar');
@@ -747,12 +974,12 @@
           renderStatusPanel();
         },
 
+        // ▼▼ NEW: left-click keeps old behavior (delete), right-click shows menu
         eventClick: async (info) => {
           const ownerId = info.event.extendedProps?.ownerId;
-          const serverName = info.event.extendedProps?.serverName;
           const canDelete = currentPersona && (isAdmin() || ownerId === currentPersona.id);
           if (!canDelete) { alert('내 예약만 삭제할 수 있어요.'); return; }
-
+          const serverName = info.event.extendedProps?.serverName;
           if (confirm(`[${serverName}] 예약을 삭제할까요?`)) {
             const { error } = await supabaseClient
               .from('reservations')
@@ -766,7 +993,15 @@
             calendar.refetchEvents();
             renderStatusPanel();
           }
+        },
+        eventDidMount: (arg) => {
+          arg.el.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            if (!canModifyEvent(arg.event)) { alert('본인 예약만 수정/삭제할 수 있어요.'); return; }
+            ctxMenu.show(e.clientX, e.clientY, arg.event);
+          });
         }
+        // ▲▲ NEW
       });
       calendar.render();
     }
