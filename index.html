@@ -51,20 +51,21 @@
             --dow-bg: rgba(124, 145, 255, .14);
             --dow-text: #e6e9f5;
             --dow-border: rgba(124, 145, 255, .28);
+            --warn: #eab308;
         }
 
         * {
             box-sizing: border-box;
         }
 
-        html,
-        body {
+        html {
             height: 100%;
         }
 
         body {
             margin: 0;
-            background: radial-gradient(1200px 600px at 20% -10%, #18224a 0%, #0b1020 60%);
+            min-height: 100%;
+            background: #0b1020 radial-gradient(1200px 600px at 20% -10%, #18224a 0%, #0b1020 60%) no-repeat fixed;
             color: var(--text);
             font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Noto Sans KR', Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji';
             -webkit-font-smoothing: antialiased;
@@ -240,6 +241,8 @@
             display: block;
             height: 100%;
             background: var(--brand);
+            border-radius: 999px;
+            transition: width 0.6s ease;
         }
 
         .status-subgrid {
@@ -406,7 +409,6 @@
             min-height: 16px;
         }
 
-        /* ▼▼ NEW: Context menu styles */
         .context-menu {
             position: fixed;
             background: #0e1430;
@@ -435,7 +437,278 @@
             background: var(--accent);
         }
 
-        /* ▲▲ NEW */
+        /* ===== VIEW TOGGLE ===== */
+        .view-toggle {
+            display: inline-flex;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            margin-left: 12px;
+        }
+        .view-toggle button {
+            background: transparent;
+            border: 0;
+            padding: 8px 14px;
+            color: var(--text);
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        .view-toggle button.active {
+            background: var(--brand);
+            color: #0b1020;
+            font-weight: 700;
+        }
+        .view-toggle button:hover:not(.active) {
+            background: rgba(124, 145, 255, 0.12);
+        }
+
+        /* ===== DASHBOARD STYLES ===== */
+        #dashboardView {
+            display: none;
+            padding: 16px;
+        }
+        #dashboardView.active {
+            display: block;
+        }
+        #reservationView.hidden {
+            display: none;
+        }
+
+        .dash-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+        .dash-header h2 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 700;
+        }
+        .dash-live-dot {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--ok);
+        }
+        .dash-live-dot::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--ok);
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        .dash-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+            gap: 16px;
+        }
+
+        .dash-server-card {
+            background: rgba(18, 25, 51, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 16px;
+            transition: border-color 0.3s ease;
+        }
+        .dash-server-card:hover {
+            border-color: rgba(124, 145, 255, 0.25);
+        }
+        .dash-server-card.stale {
+            border-color: rgba(234, 179, 8, 0.3);
+        }
+        .dash-server-card.offline {
+            border-color: rgba(239, 68, 68, 0.3);
+            opacity: 0.7;
+        }
+
+        .dash-card-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .dash-card-title {
+            font-weight: 800;
+            font-size: 15px;
+        }
+        .dash-card-status {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 999px;
+            font-weight: 600;
+        }
+        .dash-card-status.online {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--ok);
+        }
+        .dash-card-status.stale {
+            background: rgba(234, 179, 8, 0.15);
+            color: var(--warn);
+        }
+        .dash-card-status.offline {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+        }
+        .dash-card-status.no-agent {
+            background: rgba(154, 163, 178, 0.15);
+            color: var(--muted);
+        }
+
+        .dash-gpu-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .dash-gpu-row {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            padding: 10px 12px;
+        }
+
+        .dash-gpu-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .dash-gpu-name {
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .dash-gpu-temp {
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .dash-gpu-temp.cool { color: var(--ok); }
+        .dash-gpu-temp.warm { color: var(--busy); }
+        .dash-gpu-temp.hot { color: var(--danger); }
+
+        .dash-metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .dash-metric {
+            display: grid;
+            gap: 4px;
+        }
+        .dash-metric-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--muted);
+        }
+        .dash-metric-label span:last-child {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .dash-bar {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+        .dash-bar > span {
+            display: block;
+            height: 100%;
+            border-radius: 999px;
+            transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1), background 0.5s ease;
+        }
+        .dash-bar .bar-ok { background: var(--ok); }
+        .dash-bar .bar-brand { background: var(--brand); }
+        .dash-bar .bar-warn { background: var(--busy); }
+        .dash-bar .bar-danger { background: var(--danger); }
+
+        .dash-processes {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .dash-proc-title {
+            font-size: 11px;
+            color: var(--muted);
+            margin-bottom: 4px;
+        }
+        .dash-proc-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+            padding: 2px 0;
+        }
+        .dash-proc-user {
+            font-weight: 600;
+            color: var(--brand);
+        }
+        .dash-proc-mem {
+            color: var(--muted);
+        }
+
+        .dash-power {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 6px;
+        }
+        .dash-power svg {
+            width: 12px;
+            height: 12px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+        }
+
+        .dash-no-agent {
+            text-align: center;
+            padding: 24px 12px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+        .dash-no-agent-icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+            opacity: 0.5;
+        }
+
+        .dash-summary-bar {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            background: rgba(18, 25, 51, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 14px;
+        }
+        .dash-summary-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .dash-summary-value {
+            font-size: 22px;
+            font-weight: 800;
+        }
+        .dash-summary-label {
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
 
         @media (max-width: 900px) {
             main {
@@ -445,14 +718,34 @@
             aside {
                 order: 2;
             }
+
+            .dash-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .dash-metrics {
+                grid-template-columns: 1fr;
+            }
+
+            header {
+                flex-direction: column;
+                gap: 8px;
+                align-items: flex-start;
+            }
         }
     </style>
 </head>
 
 <body>
     <header>
-        <div class="row"><span class="title">🗓️ 연구실 서버 예약</span></div>
         <div class="row">
+            <span class="title">🗓️ 연구실 서버 예약</span>
+            <div class="view-toggle" id="viewToggle">
+                <button data-view="reservation" class="active">예약</button>
+                <button data-view="dashboard">대시보드</button>
+            </div>
+        </div>
+        <div class="row" id="personaRow">
             <span style="opacity:.8">사용자:</span>
             <div class="segmented" id="personaGroup">
                 <button data-id="기민준">기민준</button>
@@ -475,7 +768,8 @@
         </div>
     </header>
 
-    <main>
+    <!-- ===== RESERVATION VIEW (original) ===== -->
+    <main id="reservationView">
         <aside>
             <div class="aside-title">서버 리스트</div>
             <div id="serverList" class="server-list"></div>
@@ -488,6 +782,16 @@
             <div id="statusPanel"></div>
         </div>
     </main>
+
+    <!-- ===== DASHBOARD VIEW (new) ===== -->
+    <div id="dashboardView">
+        <div class="dash-header">
+            <h2>⚡ 실시간 GPU 모니터링</h2>
+            <div class="dash-live-dot" id="dashLiveStatus">실시간</div>
+        </div>
+        <div class="dash-summary-bar" id="dashSummary"></div>
+        <div class="dash-grid" id="dashGrid"></div>
+    </div>
 
     <div id="createModal" class="modal-wrap" role="dialog" aria-modal="true">
         <div class="modal">
@@ -520,7 +824,6 @@
         </div>
     </div>
 
-    <!-- ▼▼ NEW: Edit modal -->
     <div id="editModal" class="modal-wrap" role="dialog" aria-modal="true">
         <div class="modal">
             <h3>예약 수정</h3>
@@ -551,11 +854,8 @@
             </div>
         </div>
     </div>
-    <!-- ▲▲ NEW -->
 
-    <!-- ▼▼ NEW: context menu container (populated by JS) -->
     <div id="ctxMenu" class="context-menu" role="menu" aria-hidden="true" style="display:none"></div>
-    <!-- ▲▲ NEW -->
 
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/locales/ko.global.min.js"></script>
@@ -598,10 +898,14 @@
 
             const LS_KEY_PERSONA = 'lab-current-persona';
             const LS_KEY_SERVER = 'lab-current-server';
+            const LS_KEY_VIEW = 'lab-current-view';
 
             let currentPersona = null;
             let currentServerId = null;
             let calendar = null;
+            let currentView = 'reservation';
+            let dashboardRealtimeChannel = null;
+            let gpuMetricsCache = {};
 
             const MS_PER_DAY = 86400000;
             const sameId = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
@@ -609,11 +913,10 @@
             const toMs = (v) => typeof v === 'number' ? v : new Date(v).getTime();
             const ymdUTC = (d) => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
 
-            // Helpers
             function startOfDay(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
             function endOfDay(d) { const x = new Date(d); x.setHours(23, 59, 59, 999); return x; }
             function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
-            function endOfDayForInput(d) { const x = new Date(d); x.setHours(23, 59, 0, 0); return x; } // 23:59 (분 단위)
+            function endOfDayForInput(d) { const x = new Date(d); x.setHours(23, 59, 0, 0); return x; }
             function toDateSafe(x) {
                 if (x instanceof Date) return x;
                 if (typeof x === 'string' && x.indexOf('T') === -1 && /^\d{4}-\d{2}-\d{2}\s/.test(x)) {
@@ -629,21 +932,11 @@
                 const { data, error } = await supabaseClient
                     .from('reservations')
                     .select('*');
-
-                if (error) {
-                    console.error('데이터 로딩 실패:', error);
-                    return [];
-                }
-
+                if (error) { console.error('데이터 로딩 실패:', error); return []; }
                 const events = data.map(e => ({
-                    ...e,
-                    start: e.start_time,
-                    end: e.end_time,
-                    gpuUsed: e.gpu_used,
-                    ownerId: e.owner_id,
-                    serverId: e.server_id,
+                    ...e, start: e.start_time, end: e.end_time,
+                    gpuUsed: e.gpu_used, ownerId: e.owner_id, serverId: e.server_id,
                 }));
-
                 return ensureMsFields(events);
             }
 
@@ -651,12 +944,259 @@
 
             function ensureMsFields(evts) {
                 for (const e of evts) {
-                    if (typeof e.startMs !== 'number') { e.startMs = toMs(e.start); }
-                    if (typeof e.endMs !== 'number') { e.endMs = toMs(e.end); }
+                    if (typeof e.startMs !== 'number') e.startMs = toMs(e.start);
+                    if (typeof e.endMs !== 'number') e.endMs = toMs(e.end);
                 }
                 return evts;
             }
 
+            // ===== VIEW TOGGLE =====
+            function switchView(view) {
+                currentView = view;
+                localStorage.setItem(LS_KEY_VIEW, view);
+
+                document.querySelectorAll('#viewToggle button').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.view === view);
+                });
+
+                const reservationView = document.getElementById('reservationView');
+                const dashboardViewEl = document.getElementById('dashboardView');
+                const personaRow = document.getElementById('personaRow');
+
+                if (view === 'dashboard') {
+                    reservationView.classList.add('hidden');
+                    dashboardViewEl.classList.add('active');
+                    personaRow.style.display = 'none';
+                    initDashboardRealtime();
+                    loadDashboardData();
+                } else {
+                    reservationView.classList.remove('hidden');
+                    dashboardViewEl.classList.remove('active');
+                    personaRow.style.display = '';
+                    if (calendar) calendar.updateSize();
+                }
+            }
+
+            document.getElementById('viewToggle').addEventListener('click', (e) => {
+                const btn = e.target.closest('button');
+                if (btn && btn.dataset.view) switchView(btn.dataset.view);
+            });
+
+            // ===== DASHBOARD LOGIC =====
+            async function loadDashboardData() {
+                const { data, error } = await supabaseClient
+                    .from('gpu_metrics')
+                    .select('*')
+                    .order('server_name', { ascending: true })
+                    .order('gpu_index', { ascending: true });
+
+                if (error) {
+                    console.error('GPU 메트릭 로딩 실패:', error);
+                    gpuMetricsCache = {};
+                } else {
+                    gpuMetricsCache = {};
+                    (data || []).forEach(row => {
+                        if (!gpuMetricsCache[row.server_name]) gpuMetricsCache[row.server_name] = [];
+                        gpuMetricsCache[row.server_name].push(row);
+                    });
+                }
+                renderDashboard();
+            }
+
+            function initDashboardRealtime() {
+                if (dashboardRealtimeChannel) return;
+                dashboardRealtimeChannel = supabaseClient
+                    .channel('gpu-metrics-realtime')
+                    .on('postgres_changes', {
+                        event: '*',
+                        schema: 'public',
+                        table: 'gpu_metrics',
+                    }, (payload) => {
+                        const row = payload.new;
+                        if (!row || !row.server_name) return;
+                        if (!gpuMetricsCache[row.server_name]) gpuMetricsCache[row.server_name] = [];
+                        const idx = gpuMetricsCache[row.server_name].findIndex(
+                            g => g.gpu_index === row.gpu_index
+                        );
+                        if (idx >= 0) gpuMetricsCache[row.server_name][idx] = row;
+                        else gpuMetricsCache[row.server_name].push(row);
+
+                        if (currentView === 'dashboard') renderDashboard();
+                    })
+                    .subscribe();
+            }
+
+            function getServerStatus(gpus) {
+                if (!gpus || gpus.length === 0) return 'no-agent';
+                const now = Date.now();
+                const latestUpdate = Math.max(...gpus.map(g => new Date(g.updated_at).getTime()));
+                const age = now - latestUpdate;
+                if (age > 5 * 60 * 1000) return 'offline';
+                if (age > 60 * 1000) return 'stale';
+                return 'online';
+            }
+
+            function getStatusLabel(status) {
+                switch (status) {
+                    case 'online': return '온라인';
+                    case 'stale': return '지연';
+                    case 'offline': return '오프라인';
+                    default: return '에이전트 없음';
+                }
+            }
+
+            function getTempClass(temp) {
+                if (temp >= 80) return 'hot';
+                if (temp >= 60) return 'warm';
+                return 'cool';
+            }
+
+            function getBarClass(pct) {
+                if (pct >= 90) return 'bar-danger';
+                if (pct >= 70) return 'bar-warn';
+                if (pct >= 30) return 'bar-brand';
+                return 'bar-ok';
+            }
+
+            function timeSince(dateStr) {
+                const s = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+                if (s < 10) return '방금';
+                if (s < 60) return `${s}초 전`;
+                if (s < 3600) return `${Math.floor(s / 60)}분 전`;
+                return `${Math.floor(s / 3600)}시간 전`;
+            }
+
+            function renderDashboard() {
+                const grid = document.getElementById('dashGrid');
+                const summary = document.getElementById('dashSummary');
+
+                let totalGpus = 0, activeGpus = 0, totalMem = 0, usedMem = 0;
+                let totalPower = 0, onlineServers = 0;
+
+                const cards = [];
+
+                SERVERS.forEach(server => {
+                    const gpus = gpuMetricsCache[server.name] || gpuMetricsCache[server.id] || [];
+                    const status = getServerStatus(gpus);
+
+                    if (status === 'online' || status === 'stale') onlineServers++;
+
+                    let cardHtml = '';
+                    cardHtml += `<div class="dash-card-head">`;
+                    cardHtml += `<div class="dash-card-title">${server.name}</div>`;
+                    cardHtml += `<span class="dash-card-status ${status}">${getStatusLabel(status)}</span>`;
+                    cardHtml += `</div>`;
+
+                    if (gpus.length === 0) {
+                        cardHtml += `<div class="dash-no-agent">`;
+                        cardHtml += `<div class="dash-no-agent-icon">📡</div>`;
+                        cardHtml += `에이전트가 연결되지 않았습니다<br>`;
+                        cardHtml += `<span style="font-size:11px;color:var(--muted);">${server.gpuType} × ${server.gpuCount}</span>`;
+                        cardHtml += `</div>`;
+                    } else {
+                        cardHtml += `<div class="dash-gpu-list">`;
+                        gpus.forEach(gpu => {
+                            totalGpus++;
+                            if (gpu.utilization_gpu > 5) activeGpus++;
+                            totalMem += (gpu.memory_total_mb || 0);
+                            usedMem += (gpu.memory_used_mb || 0);
+                            totalPower += (gpu.power_draw_w || 0);
+
+                            const memPct = gpu.memory_total_mb > 0
+                                ? Math.round((gpu.memory_used_mb / gpu.memory_total_mb) * 100) : 0;
+                            const utilPct = Math.round(gpu.utilization_gpu || 0);
+                            const tempC = gpu.temperature_c || 0;
+                            const tempCls = getTempClass(tempC);
+
+                            let processes = [];
+                            try {
+                                processes = typeof gpu.processes === 'string'
+                                    ? JSON.parse(gpu.processes) : (gpu.processes || []);
+                            } catch (e) { }
+
+                            cardHtml += `<div class="dash-gpu-row">`;
+                            cardHtml += `<div class="dash-gpu-top">`;
+                            cardHtml += `<span class="dash-gpu-name">GPU ${gpu.gpu_index}${gpu.gpu_name ? ' · ' + gpu.gpu_name : ''}</span>`;
+                            cardHtml += `<span class="dash-gpu-temp ${tempCls}">${tempC}°C</span>`;
+                            cardHtml += `</div>`;
+
+                            cardHtml += `<div class="dash-metrics">`;
+                            // Utilization
+                            cardHtml += `<div class="dash-metric">`;
+                            cardHtml += `<div class="dash-metric-label"><span>사용률</span><span>${utilPct}%</span></div>`;
+                            cardHtml += `<div class="dash-bar"><span class="${getBarClass(utilPct)}" style="width:${utilPct}%"></span></div>`;
+                            cardHtml += `</div>`;
+                            // Memory
+                            cardHtml += `<div class="dash-metric">`;
+                            cardHtml += `<div class="dash-metric-label"><span>메모리</span><span>${memPct}% (${Math.round(gpu.memory_used_mb / 1024 * 10) / 10}/${Math.round(gpu.memory_total_mb / 1024 * 10) / 10} GB)</span></div>`;
+                            cardHtml += `<div class="dash-bar"><span class="${getBarClass(memPct)}" style="width:${memPct}%"></span></div>`;
+                            cardHtml += `</div>`;
+                            cardHtml += `</div>`;
+
+                            // Power
+                            cardHtml += `<div class="dash-power">`;
+                            cardHtml += `<svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>`;
+                            cardHtml += `${Math.round(gpu.power_draw_w || 0)}W`;
+                            if (gpu.power_limit_w) cardHtml += ` / ${Math.round(gpu.power_limit_w)}W`;
+                            if (gpu.fan_speed_pct != null) cardHtml += ` · 팬 ${gpu.fan_speed_pct}%`;
+                            cardHtml += `</div>`;
+
+                            // Processes
+                            if (processes.length > 0) {
+                                cardHtml += `<div class="dash-processes">`;
+                                cardHtml += `<div class="dash-proc-title">실행 중인 프로세스</div>`;
+                                processes.forEach(proc => {
+                                    cardHtml += `<div class="dash-proc-item">`;
+                                    cardHtml += `<span><span class="dash-proc-user">${proc.user || 'unknown'}</span> · ${proc.name || 'unknown'}</span>`;
+                                    cardHtml += `<span class="dash-proc-mem">${proc.used_memory_mb || 0} MB</span>`;
+                                    cardHtml += `</div>`;
+                                });
+                                cardHtml += `</div>`;
+                            }
+
+                            cardHtml += `</div>`;
+                        });
+                        cardHtml += `</div>`;
+
+                        // Last update
+                        const latestUpdate = gpus.reduce((latest, g) =>
+                            new Date(g.updated_at) > new Date(latest) ? g.updated_at : latest,
+                            gpus[0].updated_at
+                        );
+                        cardHtml += `<div style="font-size:11px;color:var(--muted);margin-top:8px;text-align:right;">업데이트: ${timeSince(latestUpdate)}</div>`;
+                    }
+
+                    cards.push({ server, status, html: cardHtml });
+                });
+
+                // Render summary
+                const memPctTotal = totalMem > 0 ? Math.round((usedMem / totalMem) * 100) : 0;
+                summary.innerHTML = `
+                    <div class="dash-summary-item">
+                        <div class="dash-summary-value">${onlineServers}<span style="font-size:14px;color:var(--muted);">/${SERVERS.length}</span></div>
+                        <div class="dash-summary-label">서버 온라인</div>
+                    </div>
+                    <div class="dash-summary-item">
+                        <div class="dash-summary-value">${activeGpus}<span style="font-size:14px;color:var(--muted);">/${totalGpus}</span></div>
+                        <div class="dash-summary-label">GPU 활성</div>
+                    </div>
+                    <div class="dash-summary-item">
+                        <div class="dash-summary-value">${memPctTotal}%</div>
+                        <div class="dash-summary-label">전체 메모리 사용</div>
+                    </div>
+                    <div class="dash-summary-item">
+                        <div class="dash-summary-value">${Math.round(totalPower)}W</div>
+                        <div class="dash-summary-label">전체 소비 전력</div>
+                    </div>
+                `;
+
+                // Render cards
+                grid.innerHTML = cards.map(c =>
+                    `<div class="dash-server-card ${c.status}">${c.html}</div>`
+                ).join('');
+            }
+
+            // ===== RESERVATION LOGIC (original, untouched) =====
             function setPersona(id) {
                 currentPersona = PERSONAS.find(p => p.id === id) || PERSONAS[0];
                 localStorage.setItem(LS_KEY_PERSONA, currentPersona.id);
@@ -717,22 +1257,18 @@
                 SERVERS.forEach(s => {
                     const row = document.createElement('div');
                     row.className = 'server-row';
-
                     const selBtn = document.createElement('button');
                     selBtn.className = 'btn server-btn';
                     selBtn.dataset.id = s.id;
                     selBtn.innerHTML = `<span>${s.name}</span><span class="muted" style="font-size:12px;">선택</span>`;
                     selBtn.addEventListener('click', () => setServer(s.id));
-
                     const meta = document.createElement('div');
                     meta.className = 'server-meta';
                     meta.innerHTML = `<span class="chip">GPU: ${s.gpuType}</span><span class="chip">${s.gpuCount}개</span>`;
-
                     row.appendChild(selBtn);
                     row.appendChild(meta);
                     wrap.appendChild(row);
                 });
-
                 const saved = localStorage.getItem(LS_KEY_SERVER);
                 const current = (saved && SERVERS.some(s => s.id === saved)) ? saved : (SERVERS[0]?.id || null);
                 setServer(current);
@@ -742,26 +1278,15 @@
                 const owner = PERSONAS.find(p => p.id === r.ownerId) || { name: r.ownerId, color: '#1f2937' };
                 const server = getServerById(r.serverId);
                 const gpuTxt = r.gpuUsed ? ` · ${r.gpuUsed}GPU` : '';
-
                 const s = toDateSafe(r.start);
                 const e = toDateSafe(r.end);
-
                 return {
-                    id: r.id,
-                    title: r.title || '',
-                    start: s,
-                    end: e,
-                    backgroundColor: owner.color,
-                    borderColor: owner.color,
-                    textColor: '#ffffff',
+                    id: r.id, title: r.title || '', start: s, end: e,
+                    backgroundColor: owner.color, borderColor: owner.color, textColor: '#ffffff',
                     extendedProps: {
-                        ownerId: r.ownerId,
-                        ownerName: owner.name,
-                        serverId: r.serverId,
-                        serverName: (server?.name || r.serverId) + gpuTxt,
-                        gpuUsed: r.gpuUsed ?? 1,
-                        startMs: s.getTime(),
-                        endMs: e.getTime()
+                        ownerId: r.ownerId, ownerName: owner.name,
+                        serverId: r.serverId, serverName: (server?.name || r.serverId) + gpuTxt,
+                        gpuUsed: r.gpuUsed ?? 1, startMs: s.getTime(), endMs: e.getTime()
                     }
                 };
             }
@@ -769,13 +1294,8 @@
             function renderEventContent(arg) {
                 const { ownerName, serverName } = arg.event.extendedProps || {};
                 const title = arg.event.title ? ` — ${arg.event.title}` : '';
-
-                // 종일 스타일(00:00 ~ 다음날 00:00 배타)로 저장된 경우 라벨을 00:00~23:59로 보정
                 const isAllDayLike = looksAllDaySpan(arg.event.start, arg.event.end);
-                const endForLabel = isAllDayLike
-                    ? new Date(arg.event.end.getTime() - 60 * 1000) // 1분 빼서 23:59
-                    : arg.event.end;
-
+                const endForLabel = isAllDayLike ? new Date(arg.event.end.getTime() - 60 * 1000) : arg.event.end;
                 const range = `(${fmtRange(arg.event.start, endForLabel)})`;
                 const el = document.createElement('div');
                 el.className = 'fc-resv';
@@ -791,26 +1311,24 @@
                 panel.innerHTML = '';
                 SERVERS.forEach(s => {
                     const serverEventsNow = events.filter(e =>
-                        sameId(e.serverId, s.id) &&
-                        toMs(e.start) <= nowMs && nowMs < toMs(e.end)
+                        sameId(e.serverId, s.id) && toMs(e.start) <= nowMs && nowMs < toMs(e.end)
                     );
                     const used = serverEventsNow.reduce((sum, e) => sum + (Number(e.gpuUsed ?? 1) || 1), 0);
                     const free = Math.max(0, s.gpuCount - used);
-
                     const card = document.createElement('div');
                     card.className = 'status-card';
                     card.innerHTML = `
-          <div class="status-name">${s.name}</div>
-          <div class="gpu-badge">GPU: <span class="chip">${s.gpuType}</span> <span class="chip">총 ${s.gpuCount}개</span></div>
-          <div class="bar"><span style="width:${Math.min(100, Math.max(0, (used / s.gpuCount) * 100))}%;"></span></div>
-          <div class="status-subgrid">
-            <div><strong>${free}</strong>/<strong>${s.gpuCount}</strong> GPUs available</div>
-            ${serverEventsNow.length === 0 ? `<div class="status-free">현재 모두 사용 가능</div>` : serverEventsNow.map(e => {
+                        <div class="status-name">${s.name}</div>
+                        <div class="gpu-badge">GPU: <span class="chip">${s.gpuType}</span> <span class="chip">총 ${s.gpuCount}개</span></div>
+                        <div class="bar"><span style="width:${Math.min(100, Math.max(0, (used / s.gpuCount) * 100))}%;"></span></div>
+                        <div class="status-subgrid">
+                            <div><strong>${free}</strong>/<strong>${s.gpuCount}</strong> GPUs available</div>
+                            ${serverEventsNow.length === 0 ? `<div class="status-free">현재 모두 사용 가능</div>` : serverEventsNow.map(e => {
                         const owner = PERSONAS.find(p => p.id === e.ownerId)?.name || e.ownerId;
                         return `<div class="chip">${owner} · ${e.gpuUsed ?? 1}GPU · until ${fmt(e.end)}</div>`;
                     }).join('')}
-          </div>
-        `;
+                        </div>
+                    `;
                     panel.appendChild(card);
                 });
             }
@@ -818,11 +1336,9 @@
             const createModal = {
                 el: null, saveBtn: null, cancelBtn: null,
                 titleEl: null, gpuEl: null, availEl: null, descEl: null, errEl: null,
-                startEl: null, endEl: null,
-                ctx: null,
-
+                startEl: null, endEl: null, ctx: null,
                 async open(ctx) {
-                    this.ctx = ctx; // ctx.wholeDay: 월간뷰에서 만든 예약인지 여부(내부용)
+                    this.ctx = ctx;
                     if (!this.el) {
                         this.el = document.getElementById('createModal');
                         this.saveBtn = document.getElementById('cmSave');
@@ -834,74 +1350,54 @@
                         this.errEl = document.getElementById('cmError');
                         this.startEl = document.getElementById('cmStart');
                         this.endEl = document.getElementById('cmEnd');
-
                         this.cancelBtn.addEventListener('click', () => this.close());
                         this.el.addEventListener('click', (e) => { if (e.target === this.el) this.close(); });
                         this.saveBtn.addEventListener('click', () => this.save());
-
                         const onChange = () => this.recalc();
                         this.startEl.addEventListener('input', onChange);
                         this.endEl.addEventListener('input', onChange);
                         this.gpuEl.addEventListener('input', onChange);
                     }
-
                     this.startEl.value = toLocalInputValue(ctx.start);
                     this.endEl.value = toLocalInputValue(ctx.end);
                     this.titleEl.value = '';
                     this.gpuEl.value = '1';
                     this.errEl.textContent = '';
                     this.el.style.display = 'grid';
-
                     await this.recalc();
                     setTimeout(() => this.titleEl.focus(), 0);
                 },
-
                 async recalc() {
                     if (!this.ctx) return;
                     const start = fromLocalInputValue(this.startEl.value);
                     const end = fromLocalInputValue(this.endEl.value);
-
                     if (!(start && end) || !(start < end)) {
                         this.errEl.textContent = '종료 시각은 시작 시각보다 늦어야 합니다.';
-                        this.availEl.textContent = '';
-                        this.saveBtn.disabled = true;
-                        return;
+                        this.availEl.textContent = ''; this.saveBtn.disabled = true; return;
                     }
-
-                    // 저장될 실제 시간대 기준(월간뷰: 익일 00:00 배타)
                     const calcStart = this.ctx.wholeDay ? startOfDay(start) : start;
                     const calcEnd = this.ctx.wholeDay ? startOfDay(addDays(end, 1)) : end;
-
                     const events = await loadEvents();
                     const usedInRange = events.reduce((sum, e) => {
                         if (!sameId(e.serverId, this.ctx.server.id)) return sum;
                         if (!overlapMs(calcStart.getTime(), calcEnd.getTime(), toMs(e.start), toMs(e.end))) return sum;
                         return sum + (Number(e.gpuUsed ?? 1) || 1);
                     }, 0);
-
                     const cap = Number(this.ctx.server.gpuCount || 0);
                     const available = Math.max(0, cap - usedInRange);
-
                     this.gpuEl.min = '1';
                     this.gpuEl.max = String(Math.max(available, 1));
                     const cur = Math.max(1, Math.min(Number(this.gpuEl.value || '1'), Math.max(available, 1)));
                     this.gpuEl.value = String(cur);
-
-                    // 라벨은 입력값 그대로(00:00~23:59)
                     this.descEl.textContent = `서버: ${this.ctx.server.name} (${this.ctx.server.gpuType}, 총 ${cap}GPU) · 기간: ${fmtRange(start, end)}`;
                     this.availEl.textContent = `이 시간대 사용 가능: ${available} / ${cap} GPU`;
                     this.errEl.textContent = available > 0 ? '' : '해당 시간대에 사용 가능한 GPU가 없습니다.';
                     this.saveBtn.disabled = available <= 0;
                 },
-
                 close() {
-                    this.el.style.display = 'none';
-                    this.errEl.textContent = '';
-                    this.titleEl.value = '';
-                    this.gpuEl.value = '1';
-                    this.ctx = null;
+                    this.el.style.display = 'none'; this.errEl.textContent = '';
+                    this.titleEl.value = ''; this.gpuEl.value = '1'; this.ctx = null;
                 },
-
                 async save() {
                     if (!this.ctx) return;
                     const title = this.titleEl.value.trim();
@@ -910,55 +1406,31 @@
                     const endIn = fromLocalInputValue(this.endEl.value) || this.ctx.end;
                     if (!isFinite(gpuUsed) || gpuUsed < 1) { this.errEl.textContent = 'GPU 개수는 1 이상이어야 합니다.'; return; }
                     if (!(startIn < endIn)) { this.errEl.textContent = '종료 시각은 시작 시각보다 늦어야 합니다.'; return; }
-
-                    // 월간뷰에서 만든 경우: DB에는 배타 종료(마지막날 다음날 00:00)로 저장
-                    let start = startIn;
-                    let end = endIn;
-                    if (this.ctx.wholeDay) {
-                        start = startOfDay(startIn);            // 00:00
-                        end = startOfDay(addDays(endIn, 1));   // 다음날 00:00 (배타)
-                    }
-
-                    const candidate = {
-                        serverId: this.ctx.server.id,
-                        startMs: start.getTime(),
-                        endMs: end.getTime(),
-                        gpuUsed
-                    };
+                    let start = startIn, end = endIn;
+                    if (this.ctx.wholeDay) { start = startOfDay(startIn); end = startOfDay(addDays(endIn, 1)); }
+                    const candidate = { serverId: this.ctx.server.id, startMs: start.getTime(), endMs: end.getTime(), gpuUsed };
                     if (!(await validateCapacity(candidate))) {
                         this.errEl.textContent = 'GPU 용량을 초과하여 예약할 수 없어요.'; return;
                     }
-
                     const newRowData = {
-                        owner_id: currentPersona.id,
-                        title: title || null,
-                        server_id: candidate.serverId,
-                        start_time: start.toISOString(),  // UTC 저장
-                        end_time: end.toISOString(),      // UTC 저장(배타)
-                        gpu_used: gpuUsed
+                        owner_id: currentPersona.id, title: title || null,
+                        server_id: candidate.serverId, start_time: start.toISOString(),
+                        end_time: end.toISOString(), gpu_used: gpuUsed
                     };
-
                     try {
                         const { error } = await supabaseClient.from('reservations').insert(newRowData);
                         if (error) throw error;
                     } catch (err) {
-                        this.errEl.textContent = '예약 저장에 실패했습니다: ' + (err?.message || err);
-                        return;
+                        this.errEl.textContent = '예약 저장에 실패했습니다: ' + (err?.message || err); return;
                     }
-
-                    calendar.refetchEvents();
-                    renderStatusPanel();
-                    this.close();
+                    calendar.refetchEvents(); renderStatusPanel(); this.close();
                 }
             };
 
-            // ▼▼ NEW: Edit modal (우클릭 → 수정)
             const editModal = {
                 el: null, saveBtn: null, cancelBtn: null,
                 titleEl: null, gpuEl: null, availEl: null, descEl: null, errEl: null,
-                startEl: null, endEl: null,
-                ctx: null, // { event, server }
-
+                startEl: null, endEl: null, ctx: null,
                 async open(ctx) {
                     this.ctx = ctx;
                     if (!this.el) {
@@ -972,17 +1444,14 @@
                         this.errEl = document.getElementById('emError');
                         this.startEl = document.getElementById('emStart');
                         this.endEl = document.getElementById('emEnd');
-
                         this.cancelBtn.addEventListener('click', () => this.close());
                         this.el.addEventListener('click', (e) => { if (e.target === this.el) this.close(); });
                         this.saveBtn.addEventListener('click', () => this.save());
-
                         const onChange = () => this.recalc();
                         this.startEl.addEventListener('input', onChange);
                         this.endEl.addEventListener('input', onChange);
                         this.gpuEl.addEventListener('input', onChange);
                     }
-
                     const ev = ctx.event;
                     this.titleEl.value = ev.title || '';
                     this.startEl.value = toLocalInputValue(ev.start);
@@ -990,52 +1459,40 @@
                     this.gpuEl.value = String(ev.extendedProps?.gpuUsed ?? 1);
                     this.errEl.textContent = '';
                     this.el.style.display = 'grid';
-
                     await this.recalc();
                     setTimeout(() => this.titleEl.focus(), 0);
                 },
-
                 async recalc() {
                     if (!this.ctx) return;
                     const start = fromLocalInputValue(this.startEl.value);
                     const end = fromLocalInputValue(this.endEl.value);
                     const currentUsed = Number(this.gpuEl.value || '1');
-
                     if (!(start && end) || !(start < end)) {
                         this.errEl.textContent = '종료 시각은 시작 시각보다 늦어야 합니다.';
-                        this.availEl.textContent = '';
-                        this.saveBtn.disabled = true;
-                        return;
+                        this.availEl.textContent = ''; this.saveBtn.disabled = true; return;
                     }
-
                     const events = await loadEvents();
                     const cap = Number(this.ctx.server.gpuCount || 0);
                     const usedInRange = events.reduce((sum, e) => {
-                        if (e.id === this.ctx.event.id) return sum; // 본인 예약 제외
+                        if (e.id === this.ctx.event.id) return sum;
                         if (!sameId(e.serverId, this.ctx.server.id)) return sum;
                         if (!overlapMs(start.getTime(), end.getTime(), toMs(e.start), toMs(e.end))) return sum;
                         return sum + (Number(e.gpuUsed ?? 1) || 1);
                     }, 0);
                     const available = Math.max(0, cap - usedInRange);
                     const allowedMax = Math.max(1, Math.min(cap, available + (this.ctx.event.extendedProps?.gpuUsed ?? 1)));
-
                     this.gpuEl.min = '1';
                     this.gpuEl.max = String(allowedMax);
                     const clamped = Math.max(1, Math.min(currentUsed, allowedMax));
                     if (clamped !== currentUsed) this.gpuEl.value = String(clamped);
-
                     this.descEl.textContent = `서버: ${this.ctx.server.name} (${this.ctx.server.gpuType}, 총 ${cap}GPU) · 기간: ${fmtRange(start, end)}`;
                     this.availEl.textContent = `이 시간대 사용 가능: ${available} / ${cap} GPU (현재 예약 포함 최대 ${allowedMax}GPU)`;
                     this.errEl.textContent = allowedMax > 0 ? '' : '해당 시간대에 사용 가능한 GPU가 없습니다.';
                     this.saveBtn.disabled = allowedMax <= 0;
                 },
-
                 close() {
-                    this.el.style.display = 'none';
-                    this.errEl.textContent = '';
-                    this.ctx = null;
+                    this.el.style.display = 'none'; this.errEl.textContent = ''; this.ctx = null;
                 },
-
                 async save() {
                     if (!this.ctx) return;
                     const title = this.titleEl.value.trim();
@@ -1044,46 +1501,27 @@
                     const end = fromLocalInputValue(this.endEl.value) || this.ctx.event.end;
                     if (!isFinite(gpuUsed) || gpuUsed < 1) { this.errEl.textContent = 'GPU 개수는 1 이상이어야 합니다.'; return; }
                     if (!(start < end)) { this.errEl.textContent = '종료 시각은 시작 시각보다 늦어야 합니다.'; return; }
-
-                    const candidate = {
-                        serverId: this.ctx.server.id,
-                        startMs: start.getTime(),
-                        endMs: end.getTime(),
-                        gpuUsed
-                    };
+                    const candidate = { serverId: this.ctx.server.id, startMs: start.getTime(), endMs: end.getTime(), gpuUsed };
                     if (!(await validateCapacity(candidate, this.ctx.event.id))) {
                         this.errEl.textContent = 'GPU 용량을 초과하여 수정할 수 없어요.'; return;
                     }
-
                     try {
-                        const { error } = await supabaseClient
-                            .from('reservations')
-                            .update({
-                                title: title || null,
-                                start_time: start.toISOString(),
-                                end_time: end.toISOString(),
-                                gpu_used: gpuUsed
-                            })
+                        const { error } = await supabaseClient.from('reservations')
+                            .update({ title: title || null, start_time: start.toISOString(), end_time: end.toISOString(), gpu_used: gpuUsed })
                             .eq('id', this.ctx.event.id);
                         if (error) throw error;
                     } catch (err) {
-                        this.errEl.textContent = '업데이트에 실패했습니다: ' + (err?.message || err);
-                        return;
+                        this.errEl.textContent = '업데이트에 실패했습니다: ' + (err?.message || err); return;
                     }
-
-                    calendar.refetchEvents();
-                    renderStatusPanel();
-                    this.close();
+                    calendar.refetchEvents(); renderStatusPanel(); this.close();
                 }
             };
-            // ▲▲ NEW
 
             async function validateCapacity(candidate, exceptId) {
                 const server = getServerById(candidate.serverId); if (!server) return false;
                 const cap = Number(server.gpuCount || 0);
                 const cStart = candidate.startMs ?? toMs(candidate.start);
                 const cEnd = candidate.endMs ?? toMs(candidate.end);
-
                 const events = await loadEvents();
                 const used = events.reduce((sum, e) => {
                     if (e.id === exceptId) return sum;
@@ -1096,7 +1534,6 @@
                 return (used + need) <= cap;
             }
 
-            // ▼▼ NEW: permissions + delete helper
             function canModifyEvent(ev) {
                 const ownerId = ev.extendedProps?.ownerId;
                 return currentPersona && (isAdmin() || ownerId === currentPersona.id);
@@ -1105,17 +1542,11 @@
                 if (!canModifyEvent(ev)) { alert('내 예약만 삭제할 수 있어요.'); return; }
                 const serverName = ev.extendedProps?.serverName || ev.extendedProps?.serverId || '';
                 if (!confirm(`[${serverName}] 예약을 삭제할까요?`)) return;
-                const { error } = await supabaseClient
-                    .from('reservations')
-                    .delete()
-                    .eq('id', ev.id);
+                const { error } = await supabaseClient.from('reservations').delete().eq('id', ev.id);
                 if (error) { alert('삭제에 실패했습니다: ' + error.message); return; }
-                calendar.refetchEvents();
-                renderStatusPanel();
+                calendar.refetchEvents(); renderStatusPanel();
             }
-            // ▲▲ NEW
 
-            // ▼▼ NEW: lightweight context menu controller
             const ctxMenu = (function () {
                 const el = document.getElementById('ctxMenu');
                 let targetEvent = null;
@@ -1123,28 +1554,19 @@
                 function show(x, y, ev) {
                     targetEvent = ev;
                     el.innerHTML = `<button data-act="edit">수정</button><button data-act="delete">삭제</button>`;
-                    el.style.display = 'block';
-                    el.setAttribute('aria-hidden', 'false');
-                    // position within viewport
+                    el.style.display = 'block'; el.setAttribute('aria-hidden', 'false');
                     const vw = window.innerWidth, vh = window.innerHeight;
-                    const rectW = 180; const rectH = 100;
-                    const left = Math.min(x, vw - rectW - 8);
-                    const top = Math.min(y, vh - rectH - 8);
-                    el.style.left = left + 'px';
-                    el.style.top = top + 'px';
+                    el.style.left = Math.min(x, vw - 188) + 'px';
+                    el.style.top = Math.min(y, vh - 108) + 'px';
                 }
                 el.addEventListener('click', (e) => {
-                    const act = e.target?.dataset?.act;
-                    if (!act) return;
-                    const ev = targetEvent; hide();
-                    if (!ev) return;
+                    const act = e.target?.dataset?.act; if (!act) return;
+                    const ev = targetEvent; hide(); if (!ev) return;
                     if (act === 'edit') {
                         const server = getServerById(ev.extendedProps?.serverId);
                         if (!canModifyEvent(ev)) { alert('본인 예약만 수정할 수 있어요.'); return; }
                         editModal.open({ event: ev, server });
-                    } else if (act === 'delete') {
-                        deleteEvent(ev);
-                    }
+                    } else if (act === 'delete') { deleteEvent(ev); }
                 });
                 document.addEventListener('click', (e) => { if (el.style.display === 'block' && !el.contains(e.target)) hide(); });
                 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hide(); });
@@ -1152,175 +1574,87 @@
                 window.addEventListener('scroll', () => { if (el.style.display === 'block') hide(); }, true);
                 return { show, hide };
             })();
-            // ▲▲ NEW
 
             async function initCalendar() {
                 const calendarEl = document.getElementById('calendar');
                 calendar = new FullCalendar.Calendar(calendarEl, {
-                    locale: 'ko',
-                    timeZone: 'local',
-                    initialView: 'dayGridMonth',
-                    height: 'auto',
-                    selectable: true,
-                    selectMirror: true,
-                    editable: true,
-                    dayMaxEvents: true,
-                    nowIndicator: true,
+                    locale: 'ko', timeZone: 'local', initialView: 'dayGridMonth',
+                    height: 'auto', selectable: true, selectMirror: true,
+                    editable: true, dayMaxEvents: true, nowIndicator: true,
                     headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' },
                     eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
                     eventContent: renderEventContent,
-
                     events: async (fetchInfo, successCallback, failureCallback) => {
-                        try {
-                            const data = await loadEvents();
-                            successCallback(data.map(mapToFcEvent));
-                        } catch (error) {
-                            failureCallback(error);
-                        }
+                        try { successCallback((await loadEvents()).map(mapToFcEvent)); }
+                        catch (error) { failureCallback(error); }
                     },
-
                     dateClick: (info) => {
                         if (!currentServerId) { alert('좌측에서 서버를 먼저 선택하세요.'); return; }
                         if (!currentPersona) { alert('상단에서 사용자를 선택하세요.'); return; }
                         const server = getServerById(currentServerId);
                         if (!server) { alert('서버 정보를 찾을 수 없습니다.'); return; }
-
                         const wholeDay = !!(info.view?.type?.startsWith('dayGrid'));
                         let selStart, selEnd;
-
-                        if (wholeDay) {
-                            selStart = startOfDay(info.date);      // 당일 00:00
-                            selEnd = endOfDayForInput(info.date);// 당일 23:59 (입력 기본값)
-                        } else {
-                            selStart = info.date;
-                            selEnd = new Date(info.date.getTime() + 60 * 60 * 1000);
-                        }
+                        if (wholeDay) { selStart = startOfDay(info.date); selEnd = endOfDayForInput(info.date); }
+                        else { selStart = info.date; selEnd = new Date(info.date.getTime() + 3600000); }
                         createModal.open({ server, start: selStart, end: selEnd, wholeDay });
                     },
-
                     select: (info) => {
                         if (!currentServerId) { alert('좌측에서 서버를 먼저 선택하세요.'); calendar.unselect(); return; }
                         if (!currentPersona) { alert('상단에서 사용자를 선택하세요.'); calendar.unselect(); return; }
                         const server = getServerById(currentServerId);
                         if (!server) { alert('서버 정보를 찾을 수 없습니다.'); calendar.unselect(); return; }
-
                         const wholeDay = !!(info.view?.type?.startsWith('dayGrid'));
                         let selStart, selEnd;
-
                         if (wholeDay) {
-                            selStart = startOfDay(info.start);           // 시작일 00:00
-                            const inclusiveEnd = new Date(info.end);
-                            inclusiveEnd.setDate(inclusiveEnd.getDate() - 1);
-                            selEnd = endOfDayForInput(inclusiveEnd);   // 마지막날 23:59
-                        } else {
-                            selStart = info.start;
-                            selEnd = info.end;
-                        }
-
+                            selStart = startOfDay(info.start);
+                            const inclusiveEnd = new Date(info.end); inclusiveEnd.setDate(inclusiveEnd.getDate() - 1);
+                            selEnd = endOfDayForInput(inclusiveEnd);
+                        } else { selStart = info.start; selEnd = info.end; }
                         createModal.open({ server, start: selStart, end: selEnd, wholeDay });
                         calendar.unselect();
                     },
-
                     eventDrop: async (info) => {
                         const ownerId = info.event.extendedProps?.ownerId;
                         if (!currentPersona || (!isAdmin() && ownerId !== currentPersona.id)) { alert('본인 예약만 이동할 수 있어요.'); info.revert(); return; }
-
                         const oldStartMs = info.event.extendedProps?.startMs;
                         const oldEndMs = info.event.extendedProps?.endMs;
                         let newStartMs, newEndMs;
-
                         if (info.view?.type?.startsWith('dayGrid')) {
-                            const oldStart = new Date(oldStartMs);
-                            const newStart = info.event.start;
+                            const oldStart = new Date(oldStartMs); const newStart = info.event.start;
                             const dayDelta = Math.round((ymdUTC(newStart) - ymdUTC(oldStart)) / MS_PER_DAY);
                             newStartMs = oldStartMs + dayDelta * MS_PER_DAY;
                             newEndMs = oldEndMs + dayDelta * MS_PER_DAY;
-                        } else {
-                            newStartMs = info.event.start.getTime();
-                            newEndMs = info.event.end.getTime();
-                        }
-
-                        const updated = {
-                            start: new Date(newStartMs).toISOString(),
-                            end: new Date(newEndMs).toISOString(),
-                            startMs: newStartMs,
-                            endMs: newEndMs,
-                            gpuUsed: info.event.extendedProps?.gpuUsed ?? 1
-                        };
-
+                        } else { newStartMs = info.event.start.getTime(); newEndMs = info.event.end.getTime(); }
+                        const updated = { start: new Date(newStartMs).toISOString(), end: new Date(newEndMs).toISOString(), startMs: newStartMs, endMs: newEndMs, gpuUsed: info.event.extendedProps?.gpuUsed ?? 1 };
                         if (!(await validateCapacity({ serverId: info.event.extendedProps.serverId, ...updated }, info.event.id))) {
-                            alert('GPU 용량을 초과하여 이동할 수 없어요.');
-                            info.revert();
-                            return;
+                            alert('GPU 용량을 초과하여 이동할 수 없어요.'); info.revert(); return;
                         }
-
-                        const { error } = await supabaseClient
-                            .from('reservations')
-                            .update({ start_time: updated.start, end_time: updated.end })
-                            .eq('id', info.event.id);
-
-                        if (error) {
-                            alert('업데이트에 실패했습니다: ' + error.message);
-                            info.revert();
-                            return;
-                        }
-                        calendar.refetchEvents();
-                        renderStatusPanel();
+                        const { error } = await supabaseClient.from('reservations').update({ start_time: updated.start, end_time: updated.end }).eq('id', info.event.id);
+                        if (error) { alert('업데이트에 실패했습니다: ' + error.message); info.revert(); return; }
+                        calendar.refetchEvents(); renderStatusPanel();
                     },
-
                     eventResize: async (info) => {
                         const ownerId = info.event.extendedProps?.ownerId;
                         if (!currentPersona || (!isAdmin() && ownerId !== currentPersona.id)) { alert('본인 예약만 수정할 수 있어요.'); info.revert(); return; }
-
-                        let newStartMs = info.event.start.getTime();
-                        let newEndMs = info.event.end.getTime();
-
-                        const updated = {
-                            start: new Date(newStartMs).toISOString(),
-                            end: new Date(newEndMs).toISOString(),
-                            startMs: newStartMs,
-                            endMs: newEndMs,
-                            gpuUsed: info.event.extendedProps?.gpuUsed ?? 1
-                        };
-
+                        let newStartMs = info.event.start.getTime(), newEndMs = info.event.end.getTime();
+                        const updated = { start: new Date(newStartMs).toISOString(), end: new Date(newEndMs).toISOString(), startMs: newStartMs, endMs: newEndMs, gpuUsed: info.event.extendedProps?.gpuUsed ?? 1 };
                         if (!(await validateCapacity({ serverId: info.event.extendedProps.serverId, ...updated }, info.event.id))) {
-                            alert('GPU 용량을 초과하여 수정할 수 없어요.');
-                            info.revert();
-                            return;
+                            alert('GPU 용량을 초과하여 수정할 수 없어요.'); info.revert(); return;
                         }
-
-                        const { error } = await supabaseClient
-                            .from('reservations')
-                            .update({ start_time: updated.start, end_time: updated.end })
-                            .eq('id', info.event.id);
-
-                        if (error) {
-                            alert('업데이트에 실패했습니다: ' + error.message);
-                            info.revert();
-                            return;
-                        }
-                        calendar.refetchEvents();
-                        renderStatusPanel();
+                        const { error } = await supabaseClient.from('reservations').update({ start_time: updated.start, end_time: updated.end }).eq('id', info.event.id);
+                        if (error) { alert('업데이트에 실패했습니다: ' + error.message); info.revert(); return; }
+                        calendar.refetchEvents(); renderStatusPanel();
                     },
-
-                    // ▼▼ NEW: left-click keeps old behavior (delete), right-click shows menu
                     eventClick: async (info) => {
                         const ownerId = info.event.extendedProps?.ownerId;
                         const canDelete = currentPersona && (isAdmin() || ownerId === currentPersona.id);
                         if (!canDelete) { alert('내 예약만 삭제할 수 있어요.'); return; }
                         const serverName = info.event.extendedProps?.serverName;
                         if (confirm(`[${serverName}] 예약을 삭제할까요?`)) {
-                            const { error } = await supabaseClient
-                                .from('reservations')
-                                .delete()
-                                .eq('id', info.event.id);
-
-                            if (error) {
-                                alert('삭제에 실패했습니다: ' + error.message);
-                                return;
-                            }
-                            calendar.refetchEvents();
-                            renderStatusPanel();
+                            const { error } = await supabaseClient.from('reservations').delete().eq('id', info.event.id);
+                            if (error) { alert('삭제에 실패했습니다: ' + error.message); return; }
+                            calendar.refetchEvents(); renderStatusPanel();
                         }
                     },
                     eventDidMount: (arg) => {
@@ -1330,16 +1664,25 @@
                             ctxMenu.show(e.clientX, e.clientY, arg.event);
                         });
                     }
-                    // ▲▲ NEW
                 });
                 calendar.render();
             }
 
+            // ===== INIT =====
             buildPersonaButtons();
             buildServerList();
             initCalendar();
             renderStatusPanel();
             setInterval(renderStatusPanel, 15000);
+
+            // Restore last view
+            const savedView = localStorage.getItem(LS_KEY_VIEW);
+            if (savedView === 'dashboard') switchView('dashboard');
+
+            // Dashboard auto-refresh fallback (in case realtime misses updates)
+            setInterval(() => {
+                if (currentView === 'dashboard') loadDashboardData();
+            }, 10000);
         })();
     </script>
 </body>
